@@ -6,7 +6,7 @@ from random import randrange
 from typing import Any, Dict, Tuple
 
 import yt_dlp
-from moviepy.editor import AudioFileClip, VideoFileClip
+from moviepy import AudioFileClip, VideoFileClip
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 
 from utils import settings
@@ -46,7 +46,16 @@ def get_start_and_end_times(video_length: int, length_of_clip: int) -> Tuple[int
     Returns:
         tuple[int,int]: Start and end time of the randomized interval
     """
-    initialValue = 180
+    
+    # Check if this is parkour video and skip intro
+    background_choice = str(settings.config["settings"]["background"]["background_video"]).casefold()
+    if "parkour" in background_choice:
+        # Skip first 10 minutes (600 seconds) of parkour video to avoid intro
+        initialValue = 600  # Start from 10 minutes in
+        print_substep(f"🏃‍♂️ Skipping parkour intro - starting from {initialValue // 60} minutes in")
+    else:
+        initialValue = 180  # Default 3 minutes for other videos
+    
     # Issue #1649 - Ensures that will be a valid interval in the video
     while int(length_of_clip) <= int(video_length + initialValue):
         if initialValue == initialValue // 2:
@@ -138,7 +147,11 @@ def chop_background(background_config: Dict[str, Tuple], video_length: int, redd
         start_time_audio, end_time_audio = get_start_and_end_times(
             video_length, background_audio.duration
         )
-        background_audio = background_audio.subclip(start_time_audio, end_time_audio)
+        # Use subclipped for newer moviepy versions, fallback to subclip for older versions
+        try:
+            background_audio = background_audio.subclipped(start_time_audio, end_time_audio)
+        except AttributeError:
+            background_audio = background_audio.subclip(start_time_audio, end_time_audio)
         background_audio.write_audiofile(f"assets/temp/{id}/background.mp3")
 
     print_step("Finding a spot in the backgrounds video to chop...✂️")
@@ -153,12 +166,16 @@ def chop_background(background_config: Dict[str, Tuple], video_length: int, redd
             f"assets/backgrounds/video/{video_choice}",
             start_time_video,
             end_time_video,
-            targetname=f"assets/temp/{id}/background.mp4",
+            f"assets/temp/{id}/background.mp4",
         )
     except (OSError, IOError):  # ffmpeg issue see #348
         print_substep("FFMPEG issue. Trying again...")
         with VideoFileClip(f"assets/backgrounds/video/{video_choice}") as video:
-            new = video.subclip(start_time_video, end_time_video)
+            # Use subclipped for newer moviepy versions, fallback to subclip for older versions
+            try:
+                new = video.subclipped(start_time_video, end_time_video)
+            except AttributeError:
+                new = video.subclip(start_time_video, end_time_video)
             new.write_videofile(f"assets/temp/{id}/background.mp4")
     print_substep("Background video chopped successfully!", style="bold green")
     return background_config["video"][2]

@@ -2,7 +2,15 @@ import json
 from os.path import exists
 
 from utils import settings
-from utils.ai_methods import sort_by_similarity
+# Make AI methods optional
+try:
+    from utils.ai_methods import sort_by_similarity
+    AI_AVAILABLE = True
+except ImportError:
+    AI_AVAILABLE = False
+    def sort_by_similarity(submissions, keywords):
+        # Fallback: just return the submissions as-is
+        return list(submissions), [0] * len(list(submissions))
 from utils.console import print_substep
 
 
@@ -17,10 +25,10 @@ def get_subreddit_undone(submissions: list, subreddit, times_checked=0, similari
         Any: The submission that has not been done
     """
     # Second try of getting a valid Submission
-    if times_checked and settings.config["ai"]["ai_similarity_enabled"]:
+    if times_checked and settings.config["ai"]["ai_similarity_enabled"] and AI_AVAILABLE:
         print("Sorting based on similarity for a different date filter and thread limit..")
         submissions = sort_by_similarity(
-            submissions, keywords=settings.config["ai"]["ai_similarity_enabled"]
+            submissions, keywords=settings.config["ai"]["ai_similarity_keywords"]
         )
 
     # recursively checks if the top submission in the list was already done.

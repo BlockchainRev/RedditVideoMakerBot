@@ -1,0 +1,61 @@
+# Dream Tales Video Creator - Sample Configuration
+# This configuration is optimized for creating engaging dream journal videos
+
+[reddit.creds]
+# Get these credentials by creating a Reddit app at https://www.reddit.com/prefs/apps
+client_id = "YOUR_CLIENT_ID_HERE"
+client_secret = "YOUR_CLIENT_SECRET_HERE"
+username = "YOUR_REDDIT_USERNAME"
+password = "YOUR_REDDIT_PASSWORD"
+2fa = false
+
+[reddit.thread]
+# Dream-focused subreddits - remove the ones you don't want
+subreddit = "Dreams+DreamAnalysis+LucidDreaming"
+post_id = ""
+max_comment_length = 500
+min_comment_length = 50
+post_lang = ""
+min_comments = 3  # Dreams posts might have fewer comments
+
+[ai]
+# AI similarity matching for better dream content
+ai_similarity_enabled = true
+ai_similarity_keywords = "dream, nightmare, sleep, vision, lucid, subconscious, symbolic, recurring"
+
+[settings]
+allow_nsfw = false
+theme = "dark"  # Dark theme works well for mystical dream content
+times_to_run = 1
+opacity = 0.9
+storymode = true  # Essential for dream narratives
+storymodemethod = 1  # Fancy animated text display
+storymode_max_length = 2000  # Allow longer dream stories
+resolution_w = 1080
+resolution_h = 1920  # Vertical format for social media
+zoom = 1.0
+channel_name = "Dream Tales"
+
+[settings.background]
+background_video = "minecraft"  # Calming background
+background_audio = "lofi"  # Relaxing audio for dream content
+background_audio_volume = 0.1  # Lower volume so narration is clear
+enable_extra_audio = false
+background_thumbnail = true
+background_thumbnail_font_family = "arial"
+background_thumbnail_font_size = 96
+background_thumbnail_font_color = "255,255,255"
+
+[settings.tts]
+voice_choice = "tiktok"  # Good quality and free
+random_voice = false  # Keep consistent voice for dream narration
+elevenlabs_voice_name = "Bella"
+elevenlabs_api_key = ""
+aws_polly_voice = "Matthew"
+streamlabs_polly_voice = "Matthew"
+tiktok_voice = "en_us_001"
+tiktok_sessionid = ""
+python_voice = "1"
+py_voice_num = "2"
+silence_duration = 0.5  # Slightly longer pauses for dream content
+no_emojis = false  # Keep emojis for visual appeal 

@@ -6,8 +6,15 @@ from typing import Tuple
 import numpy as np
 import translators
 from moviepy.audio.AudioClip import AudioClip
-from moviepy.audio.fx.volumex import volumex
-from moviepy.editor import AudioFileClip
+# Updated import for newer moviepy versions
+try:
+    from moviepy.audio.fx.volumex import volumex
+except ImportError:
+    # Fallback for newer moviepy versions
+    from moviepy.audio.fx import MultiplyVolume
+    def volumex(clip, volume):
+        return clip.with_effects([MultiplyVolume(volume)])
+from moviepy import AudioFileClip
 from rich.progress import track
 
 from utils import settings
@@ -107,7 +114,7 @@ class TTSEngine:
         split_text = [
             x.group().strip()
             for x in re.finditer(
-                r" *(((.|\n){0," + str(self.tts_module.max_chars) + "})(\.|.$))", text
+                r" *(((.|\n){0," + str(self.tts_module.max_chars) + r"})(\.|.$))", text
             )
         ]
         self.create_silence_mp3()
@@ -144,11 +151,18 @@ class TTSEngine:
             print("OSError")
 
     def call_tts(self, filename: str, text: str):
-        self.tts_module.run(
-            text,
-            filepath=f"{self.path}/{filename}.mp3",
-            random_voice=settings.config["settings"]["tts"]["random_voice"],
-        )
+        # Check if TTS module supports random voice
+        if hasattr(self.tts_module, 'randomvoice') and settings.config["settings"]["tts"]["random_voice"]:
+            self.tts_module.run(
+                text,
+                filepath=f"{self.path}/{filename}.mp3",
+                random_voice=settings.config["settings"]["tts"]["random_voice"],
+            )
+        else:
+            self.tts_module.run(
+                text,
+                filepath=f"{self.path}/{filename}.mp3",
+            )
         # try:
         #     self.length += MP3(f"{self.path}/{filename}.mp3").info.length
         # except (MutagenError, HeaderNotFoundError):

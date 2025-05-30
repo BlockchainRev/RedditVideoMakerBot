@@ -22,23 +22,24 @@ from video_creation.background import (
     get_background_config,
 )
 from video_creation.final_video import make_final_video
-from video_creation.screenshot_downloader import get_screenshots_of_reddit_posts
+from video_creation.text_image_generator import generate_dream_images
 from video_creation.voices import save_text_to_mp3
 
 __VERSION__ = "3.3.0"
 
 print(
     """
-██████╗ ███████╗██████╗ ██████╗ ██╗████████╗    ██╗   ██╗██╗██████╗ ███████╗ ██████╗     ███╗   ███╗ █████╗ ██╗  ██╗███████╗██████╗
-██╔══██╗██╔════╝██╔══██╗██╔══██╗██║╚══██╔══╝    ██║   ██║██║██╔══██╗██╔════╝██╔═══██╗    ████╗ ████║██╔══██╗██║ ██╔╝██╔════╝██╔══██╗
-██████╔╝█████╗  ██║  ██║██║  ██║██║   ██║       ██║   ██║██║██║  ██║█████╗  ██║   ██║    ██╔████╔██║███████║█████╔╝ █████╗  ██████╔╝
-██╔══██╗██╔══╝  ██║  ██║██║  ██║██║   ██║       ╚██╗ ██╔╝██║██║  ██║██╔══╝  ██║   ██║    ██║╚██╔╝██║██╔══██║██╔═██╗ ██╔══╝  ██╔══██╗
-██║  ██║███████╗██████╔╝██████╔╝██║   ██║        ╚████╔╝ ██║██████╔╝███████╗╚██████╔╝    ██║ ╚═╝ ██║██║  ██║██║  ██╗███████╗██║  ██║
-╚═╝  ╚═╝╚══════╝╚═════╝ ╚═════╝ ╚═╝   ╚═╝         ╚═══╝  ╚═╝╚═════╝ ╚══════╝ ╚═════╝     ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝
+██████╗ ██████╗ ███████╗ █████╗ ███╗   ███╗    ████████╗ █████╗ ██╗     ███████╗███████╗
+██╔══██╗██╔══██╗██╔════╝██╔══██╗████╗ ████║    ╚══██╔══╝██╔══██╗██║     ██╔════╝██╔════╝
+██║  ██║██████╔╝█████╗  ███████║██╔████╔██║       ██║   ███████║██║     █████╗  ███████╗
+██║  ██║██╔══██╗██╔══╝  ██╔══██║██║╚██╔╝██║       ██║   ██╔══██║██║     ██╔══╝  ╚════██║
+██████╔╝██║  ██║███████╗██║  ██║██║ ╚═╝ ██║       ██║   ██║  ██║███████╗███████╗███████║
+╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝       ╚═╝   ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝
+                        🌙 Dream Journal Video Creator 🌙
 """
 )
 print_markdown(
-    "### Thanks for using this tool! Feel free to contribute to this project on GitHub! If you have any questions, feel free to join my Discord server or submit a GitHub issue. You can find solutions to many common problems in the documentation: https://reddit-video-maker-bot.netlify.app/"
+    "### Dream Tales Video Creator - Automated dream story videos from Reddit! Perfect for creating engaging dream journal content for marketing. Extract dreams from r/Dreams, r/DreamAnalysis and more!"
 )
 checkversion(__VERSION__)
 
@@ -49,7 +50,10 @@ def main(POST_ID=None) -> None:
     redditid = id(reddit_object)
     length, number_of_comments = save_text_to_mp3(reddit_object)
     length = math.ceil(length)
-    get_screenshots_of_reddit_posts(reddit_object, number_of_comments)
+    
+    # Generate the dream images instead of taking screenshots
+    generate_dream_images(reddit_object)
+    
     bg_config = {
         "video": get_background_config("video"),
         "audio": get_background_config("audio"),
@@ -79,9 +83,9 @@ def shutdown() -> NoReturn:
 
 
 if __name__ == "__main__":
-    if sys.version_info.major != 3 or sys.version_info.minor not in [10, 11]:
+    if sys.version_info.major != 3 or sys.version_info.minor < 10:
         print(
-            "Hey! Congratulations, you've made it so far (which is pretty rare with no Python 3.10). Unfortunately, this program only works on Python 3.10. Please install Python 3.10 and try again."
+            "Hey! This program requires Python 3.10 or newer. You're using Python {}.{}. Please install Python 3.10+ and try again.".format(sys.version_info.major, sys.version_info.minor)
         )
         sys.exit()
     ffmpeg_install()

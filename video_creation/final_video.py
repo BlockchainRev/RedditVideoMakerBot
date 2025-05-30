@@ -84,28 +84,10 @@ def name_normalize(name: str) -> str:
 
 
 def prepare_background(reddit_id: str, W: int, H: int) -> str:
-    output_path = f"assets/temp/{reddit_id}/background_noaudio.mp4"
-    output = (
-        ffmpeg.input(f"assets/temp/{reddit_id}/background.mp4")
-        .filter("crop", f"ih*({W}/{H})", "ih")
-        .output(
-            output_path,
-            an=None,
-            **{
-                "c:v": "h264",
-                "b:v": "20M",
-                "b:a": "192k",
-                "threads": multiprocessing.cpu_count(),
-            },
-        )
-        .overwrite_output()
-    )
-    try:
-        output.run(quiet=True)
-    except ffmpeg.Error as e:
-        print(e.stderr.decode("utf8"))
-        exit(1)
-    return output_path
+    # For now, just return the background video as-is
+    # The final composition will handle scaling and overlays
+    background_path = f"assets/temp/{reddit_id}/background.mp4"
+    return background_path
 
 
 def create_fancy_thumbnail(image, text, text_color, padding, wrap=35):
@@ -217,21 +199,30 @@ def make_final_video(
 
     # Gather all audio clips
     audio_clips = list()
-    if number_of_clips == 0 and settings.config["settings"]["storymode"] == "false":
+    
+    # Calculate actual number of content clips based on images, not all audio files
+    actual_content_clips = 0
+    if settings.config["settings"]["storymode"] and settings.config["settings"]["storymodemethod"] == 1:
+        i = 0
+        while os.path.exists(f"assets/temp/{reddit_id}/png/content_{i}.png"):
+            actual_content_clips += 1
+            i += 1
+    
+    if actual_content_clips == 0 and settings.config["settings"]["storymode"] == "false":
         print(
             "No audio clips to gather. Please use a different TTS or post."
         )  # This is to fix the TypeError: unsupported operand type(s) for +: 'int' and 'NoneType'
         exit()
+
     if settings.config["settings"]["storymode"]:
         if settings.config["settings"]["storymodemethod"] == 0:
             audio_clips = [ffmpeg.input(f"assets/temp/{reddit_id}/mp3/title.mp3")]
             audio_clips.insert(1, ffmpeg.input(f"assets/temp/{reddit_id}/mp3/postaudio.mp3"))
         elif settings.config["settings"]["storymodemethod"] == 1:
-            audio_clips = [
-                ffmpeg.input(f"assets/temp/{reddit_id}/mp3/postaudio-{i}.mp3")
-                for i in track(range(number_of_clips + 1), "Collecting the audio files...")
-            ]
-            audio_clips.insert(0, ffmpeg.input(f"assets/temp/{reddit_id}/mp3/title.mp3"))
+            # Only collect audio clips for title + the content images we have
+            audio_clips = [ffmpeg.input(f"assets/temp/{reddit_id}/mp3/title.mp3")]
+            for i in range(actual_content_clips):
+                audio_clips.append(ffmpeg.input(f"assets/temp/{reddit_id}/mp3/postaudio-{i}.mp3"))
 
     else:
         audio_clips = [
@@ -247,12 +238,18 @@ def make_final_video(
             0,
             float(ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/title.mp3")["format"]["duration"]),
         )
+
+        for i in range(actual_content_clips):
+            audio_clips_durations.append(
+                float(ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/postaudio-{i}.mp3")["format"]["duration"])
+            )
+        
+        console.log(f"[bold green] Video Will Be: {sum(audio_clips_durations)} Seconds Long")
+
     audio_concat = ffmpeg.concat(*audio_clips, a=1, v=0)
     ffmpeg.output(
         audio_concat, f"assets/temp/{reddit_id}/audio.mp3", **{"b:a": "192k"}
     ).overwrite_output().run(quiet=True)
-
-    console.log(f"[bold green] Video Will Be: {length} Seconds Long")
 
     screenshot_width = int((W * 45) // 100)
     audio = ffmpeg.input(f"assets/temp/{reddit_id}/audio.mp3")
@@ -262,21 +259,7 @@ def make_final_video(
 
     Path(f"assets/temp/{reddit_id}/png").mkdir(parents=True, exist_ok=True)
 
-    # Credits to tim (beingbored)
-    # get the title_template image and draw a text in the middle part of it with the title of the thread
-    title_template = Image.open("assets/title_template.png")
-
-    title = reddit_obj["thread_title"]
-
-    title = name_normalize(title)
-
-    font_color = "#000000"
-    padding = 5
-
-    # create_fancy_thumbnail(image, text, text_color, padding
-    title_img = create_fancy_thumbnail(title_template, title, font_color, padding)
-
-    title_img.save(f"assets/temp/{reddit_id}/png/title.png")
+    # Use the title image already created by our dream generator
     image_clips.insert(
         0,
         ffmpeg.input(f"assets/temp/{reddit_id}/png/title.png")["v"].filter(
@@ -286,16 +269,15 @@ def make_final_video(
 
     current_time = 0
     if settings.config["settings"]["storymode"]:
+        # Only get audio durations for the images we actually have (title + content images)
         audio_clips_durations = [
-            float(
-                ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/postaudio-{i}.mp3")["format"]["duration"]
-            )
-            for i in range(number_of_clips)
+            float(ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/title.mp3")["format"]["duration"])
         ]
-        audio_clips_durations.insert(
-            0,
-            float(ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/title.mp3")["format"]["duration"]),
-        )
+        for i in range(actual_content_clips):
+            audio_clips_durations.append(
+                float(ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/postaudio-{i}.mp3")["format"]["duration"])
+            )
+        
         if settings.config["settings"]["storymodemethod"] == 0:
             image_clips.insert(
                 1,
@@ -311,19 +293,28 @@ def make_final_video(
             )
             current_time += audio_clips_durations[0]
         elif settings.config["settings"]["storymodemethod"] == 1:
-            for i in track(range(0, number_of_clips + 1), "Collecting the image files..."):
+            # Show title image first
+            background_clip = background_clip.overlay(
+                image_clips[0],  # Title image
+                enable=f"between(t,{current_time},{current_time + audio_clips_durations[0]})",
+                x="(main_w-overlay_w)/2",
+                y="(main_h-overlay_h)/2",
+            )
+            current_time += audio_clips_durations[0]
+            
+            for i in track(range(actual_content_clips), "Collecting the image files..."):
                 image_clips.append(
-                    ffmpeg.input(f"assets/temp/{reddit_id}/png/img{i}.png")["v"].filter(
+                    ffmpeg.input(f"assets/temp/{reddit_id}/png/content_{i}.png")["v"].filter(
                         "scale", screenshot_width, -1
                     )
                 )
                 background_clip = background_clip.overlay(
-                    image_clips[i],
-                    enable=f"between(t,{current_time},{current_time + audio_clips_durations[i]})",
+                    image_clips[i + 1],  # +1 because index 0 is title
+                    enable=f"between(t,{current_time},{current_time + audio_clips_durations[i + 1]})",
                     x="(main_w-overlay_w)/2",
                     y="(main_h-overlay_h)/2",
                 )
-                current_time += audio_clips_durations[i]
+                current_time += audio_clips_durations[i + 1]
     else:
         for i in range(0, number_of_clips + 1):
             image_clips.append(
@@ -415,7 +406,127 @@ def make_final_video(
         pbar.update(status - old_percentage)
 
     defaultPath = f"results/{subreddit}"
-    with ProgressFfmpeg(length, on_update_example) as progress:
+    actual_length = sum(audio_clips_durations)
+    
+    # Simplified approach: create video step by step instead of complex filter chain
+    print_substep("🎬 Creating simplified video composition...")
+    
+    # Step 1: Create a simple video with just background and audio
+    try:
+        # Get the total audio duration
+        audio_duration = sum(audio_clips_durations)
+        
+        # Create background video with proper duration
+        background_video = ffmpeg.input(f"assets/temp/{reddit_id}/background.mp4").video
+        background_audio_input = ffmpeg.input(f"assets/temp/{reddit_id}/background.mp3").audio
+        main_audio = ffmpeg.input(f"assets/temp/{reddit_id}/audio.mp3").audio
+        
+        # Mix the audio
+        if settings.config["settings"]["background"]["background_audio_volume"] > 0:
+            bg_audio_volume = settings.config["settings"]["background"]["background_audio_volume"]
+            mixed_audio = ffmpeg.filter([main_audio, background_audio_input.filter("volume", bg_audio_volume)], "amix", duration="longest")
+        else:
+            mixed_audio = main_audio
+        
+        # Scale background to target resolution and loop it for the duration
+        scaled_background = background_video.filter("scale", W, H).filter("loop", loop=-1, size=int(audio_duration * 25), start=0)
+        
+        # Add text overlay for credit
+        credit_text = f"Background by {background_config['video'][2]}"
+        final_video = scaled_background.drawtext(
+            text=credit_text,
+            x=f"(w-text_w)",
+            y=f"(h-text_h)", 
+            fontsize=5,
+            fontcolor="White",
+            fontfile=os.path.join("fonts", "Roboto-Regular.ttf")
+        )
+        
+        # Create final output
+        path = defaultPath + f"/{filename}"
+        path = (path[:251] + ".mp4")
+        
+        print_substep(f"🎥 Rendering final video: {filename}")
+        
+        output = ffmpeg.output(
+            final_video,
+            mixed_audio, 
+            path,
+            vcodec="libx264",
+            acodec="aac",
+            pix_fmt="yuv420p",
+            t=audio_duration,
+            **{"b:v": "2M", "b:a": "128k"}
+        ).overwrite_output()
+        
+        output.run(quiet=True)
+        print_substep("✅ Basic video created successfully!")
+        
+        # Now let's try to add the images as overlays in a simpler way
+        if os.path.exists(path):
+            print_substep("🖼️ Adding image overlays...")
+            
+            # Create a version with image overlays
+            path_with_images = defaultPath + f"/{filename.replace('.mp4', '_with_images.mp4')}"
+            
+            # Input the basic video we just created
+            base_video = ffmpeg.input(path).video
+            base_audio = ffmpeg.input(path).audio
+            
+            current_time = 0
+            result_video = base_video
+            
+            # Add title image
+            if os.path.exists(f"assets/temp/{reddit_id}/png/title.png"):
+                title_img = ffmpeg.input(f"assets/temp/{reddit_id}/png/title.png").video.filter("scale", screenshot_width, -1)
+                result_video = result_video.overlay(
+                    title_img,
+                    x="(main_w-overlay_w)/2",
+                    y="(main_h-overlay_h)/2",
+                    enable=f"between(t,{current_time},{current_time + audio_clips_durations[0]})"
+                )
+                current_time += audio_clips_durations[0]
+            
+            # Add content images
+            for i in range(actual_content_clips):
+                if os.path.exists(f"assets/temp/{reddit_id}/png/content_{i}.png"):
+                    content_img = ffmpeg.input(f"assets/temp/{reddit_id}/png/content_{i}.png").video.filter("scale", screenshot_width, -1)
+                    result_video = result_video.overlay(
+                        content_img,
+                        x="(main_w-overlay_w)/2", 
+                        y="(main_h-overlay_h)/2",
+                        enable=f"between(t,{current_time},{current_time + audio_clips_durations[i + 1]})"
+                    )
+                    current_time += audio_clips_durations[i + 1]
+            
+            # Output final video with images
+            final_output = ffmpeg.output(
+                result_video,
+                base_audio,
+                path_with_images,
+                vcodec="libx264", 
+                acodec="aac",
+                pix_fmt="yuv420p",
+                **{"b:v": "2M", "b:a": "128k"}
+            ).overwrite_output()
+            
+            final_output.run(quiet=True)
+            print_substep("✅ Final video with images created successfully!")
+            
+    except Exception as e:
+        print_substep(f"❌ Simplified approach failed: {str(e)}")
+        print_substep("🔄 Trying basic audio-only approach...")
+        
+        # Absolute fallback: just create audio file
+        try:
+            basic_path = defaultPath + f"/audio_only_{filename.replace('.mp4', '.mp3')}"
+            ffmpeg.output(final_audio, basic_path).overwrite_output().run(quiet=True)
+            print_substep("✅ Audio-only version created!")
+        except Exception as audio_e:
+            print_substep(f"❌ Audio creation failed: {str(audio_e)}")
+
+    # Continue with the original complex approach as backup
+    with ProgressFfmpeg(actual_length, on_update_example) as progress:
         path = defaultPath + f"/{filename}"
         path = (
             path[:251] + ".mp4"
@@ -449,7 +560,7 @@ def make_final_video(
             path[:251] + ".mp4"
         )  # Prevent a error by limiting the path length, do not change this.
         print_step("Rendering the Only TTS Video 🎥")
-        with ProgressFfmpeg(length, on_update_example) as progress:
+        with ProgressFfmpeg(actual_length, on_update_example) as progress:
             try:
                 ffmpeg.output(
                     background_clip,
