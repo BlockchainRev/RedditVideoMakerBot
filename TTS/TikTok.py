@@ -128,7 +128,7 @@ class TikTok:
         text = text.replace("+", "plus").replace("&", "and").replace("r/", "")
 
         # prepare url request
-        params = {"req_text": text, "speaker_map_type": 0, "aid": 1233}
+        params = {"req_text": text, "speaker_map_type": 0, "aid": 8123}
 
         if voice is not None:
             params["text_speaker"] = voice

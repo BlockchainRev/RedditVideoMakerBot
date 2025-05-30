@@ -63,14 +63,15 @@ def create_dream_title_image(reddit_object: dict, theme, text_color, transparent
     
     # Load fonts
     try:
-        title_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Bold.ttf"), 120)
-        subtitle_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Regular.ttf"), 60)
+        title_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Bold.ttf"), 80)
+        subtitle_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Regular.ttf"), 40)
     except:
         title_font = ImageFont.load_default()
         subtitle_font = ImageFont.load_default()
     
-    size = (1920, 1080)
-    image = Image.new("RGBA", size, theme)
+    # FIXED: Use correct portrait dimensions (1080x1920)
+    size = (1080, 1920)
+    image = Image.new("RGBA", size, (0, 0, 0, 0))  # Transparent background
     
     # Process the title
     title_text = reddit_object["thread_title"]
@@ -80,23 +81,23 @@ def create_dream_title_image(reddit_object: dict, theme, text_color, transparent
     # Add a dream-themed subtitle
     subtitle = "✨ Dream Story ✨"
     
-    # Draw title
-    draw_multiline_text_with_styling(
+    # Draw title with clean text (no purple background)
+    draw_clean_text(
         image, title_text, title_font, text_color, 
-        padding=20, wrap=25, transparent=transparent
+        padding=20, wrap=25
     )
     
     # Add subtitle at the bottom
     draw = ImageDraw.Draw(image)
     subtitle_width, subtitle_height = getsize(subtitle_font, subtitle)
-    x = (1920 - subtitle_width) / 2
-    y = 1080 - subtitle_height - 100
+    x = (1080 - subtitle_width) / 2
+    y = 1920 - subtitle_height - 150
     
-    if transparent:
-        for offset in range(1, 3):
-            for dx, dy in [(-offset, -offset), (offset, -offset), 
-                          (-offset, offset), (offset, offset)]:
-                draw.text((x + dx, y + dy), subtitle, font=subtitle_font, fill="black")
+    # Add shadow for readability
+    for offset in range(1, 4):
+        for dx, dy in [(-offset, -offset), (offset, -offset), 
+                      (-offset, offset), (offset, offset)]:
+            draw.text((x + dx, y + dy), subtitle, font=subtitle_font, fill=(0, 0, 0, 200))
     
     draw.text((x, y), subtitle, font=subtitle_font, fill=text_color)
     
@@ -131,11 +132,12 @@ def create_dream_content_images(reddit_object: dict, theme, text_color, transpar
     
     # Load fonts
     try:
-        content_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Regular.ttf"), 90)
+        content_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Regular.ttf"), 60)
     except:
         content_font = ImageFont.load_default()
     
-    size = (1920, 1080)
+    # FIXED: Use correct portrait dimensions (1080x1920)
+    size = (1080, 1920)
     
     # Split text into chunks that fit nicely on screen
     # Each chunk should be roughly 400-600 characters for good readability
@@ -167,11 +169,11 @@ def create_dream_content_images(reddit_object: dict, theme, text_color, transpar
     # Create images for each chunk
     image_paths = []
     for idx, chunk in enumerate(track(text_chunks, "Creating dream content images...")):
-        image = Image.new("RGBA", size, theme)
+        image = Image.new("RGBA", size, (0, 0, 0, 0))  # Transparent background
         
-        draw_multiline_text_with_styling(
+        draw_clean_text(
             image, chunk, content_font, text_color, 
-            padding=15, wrap=35, transparent=transparent
+            padding=15, wrap=30
         )
         
         image_path = f"assets/temp/{reddit_id}/png/content_{idx}.png"
@@ -179,6 +181,40 @@ def create_dream_content_images(reddit_object: dict, theme, text_color, transpar
         image_paths.append(image_path)
     
     return image_paths
+
+
+def draw_clean_text(image, text, font, text_color, padding, wrap=50) -> None:
+    """
+    Draw clean multiline text with shadows but no background boxes
+    """
+    # Ensure text is a string
+    if isinstance(text, list):
+        text = " ".join(str(item) for item in text)
+    elif not isinstance(text, str):
+        text = str(text) if text is not None else ""
+    
+    draw = ImageDraw.Draw(image)
+    font_height = getheight(font, text)
+    image_width, image_height = image.size
+    lines = textwrap.wrap(text, width=wrap)
+    
+    # Calculate total text height
+    total_height = (font_height + padding) * len(lines)
+    y = (image_height - total_height) / 2
+    
+    for line in lines:
+        line_width, line_height = getsize(font, line)
+        x = (image_width - line_width) / 2
+        
+        # Add subtle shadow for readability
+        for offset in range(1, 4):
+            for dx, dy in [(-offset, -offset), (offset, -offset), 
+                          (-offset, offset), (offset, offset)]:
+                draw.text((x + dx, y + dy), line, font=font, fill=(0, 0, 0, 180))
+        
+        # Draw the main text
+        draw.text((x, y), line, font=font, fill=text_color)
+        y += line_height + padding
 
 
 def create_dream_comment_images(reddit_object: dict, theme, text_color, 
@@ -193,20 +229,21 @@ def create_dream_comment_images(reddit_object: dict, theme, text_color,
     
     # Load fonts
     try:
-        comment_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Regular.ttf"), 75)
-        header_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Bold.ttf"), 85)
+        comment_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Regular.ttf"), 50)
+        header_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Bold.ttf"), 60)
     except:
         comment_font = ImageFont.load_default()
         header_font = ImageFont.load_default()
     
-    size = (1920, 1080)
+    # FIXED: Use correct portrait dimensions (1080x1920)
+    size = (1080, 1920)
     image_paths = []
     
     # Process comments (limit to max_comments)
     comments_to_process = reddit_object["comments"][:max_comments]
     
     for idx, comment in enumerate(track(comments_to_process, "Creating comment images...")):
-        image = Image.new("RGBA", size, theme)
+        image = Image.new("RGBA", size, (0, 0, 0, 0))  # Transparent background
         
         # Add a header
         header_text = f"💭 Dream Analysis #{idx + 1}"
@@ -221,25 +258,25 @@ def create_dream_comment_images(reddit_object: dict, theme, text_color,
         # Draw header
         draw = ImageDraw.Draw(image)
         header_width, header_height = getsize(header_font, header_text)
-        header_x = (1920 - header_width) / 2
-        header_y = 150
+        header_x = (1080 - header_width) / 2
+        header_y = 400
         
-        if transparent:
-            for offset in range(1, 3):
-                for dx, dy in [(-offset, -offset), (offset, -offset), 
-                              (-offset, offset), (offset, offset)]:
-                    draw.text((header_x + dx, header_y + dy), header_text, 
-                             font=header_font, fill="black")
+        # Add shadow for readability
+        for offset in range(1, 4):
+            for dx, dy in [(-offset, -offset), (offset, -offset), 
+                          (-offset, offset), (offset, offset)]:
+                draw.text((header_x + dx, header_y + dy), header_text, 
+                         font=header_font, fill=(0, 0, 0, 200))
         
         draw.text((header_x, header_y), header_text, font=header_font, fill=text_color)
         
-        # Draw comment content below header
-        content_y_start = header_y + header_height + 80
-        content_image = Image.new("RGBA", (1920, 1080 - int(content_y_start)), theme)
+        # Draw comment content below header using our clean text function
+        content_y_start = header_y + header_height + 100
+        content_image = Image.new("RGBA", (1080, 1920 - int(content_y_start)), (0, 0, 0, 0))
         
-        draw_multiline_text_with_styling(
+        draw_clean_text(
             content_image, comment_text, comment_font, text_color, 
-            padding=12, wrap=40, transparent=transparent
+            padding=12, wrap=25
         )
         
         # Paste the content image onto the main image
@@ -253,7 +290,7 @@ def create_dream_comment_images(reddit_object: dict, theme, text_color,
 
 
 def generate_dream_images(reddit_obj: dict):
-    """Generate larger text chunks for easier subtitle syncing"""
+    """Generate clean text images for dream content"""
     reddit_id = reddit_obj["thread_id"]
     
     # Create output directory
@@ -262,108 +299,140 @@ def generate_dream_images(reddit_obj: dict):
     # Portrait video dimensions for mobile/TikTok format
     W, H = 1080, 1920
     
-    print_substep("Creating title image...")
-    create_title_image(reddit_obj["thread_title"], reddit_id, W, H)
+    print_substep("Creating clean title image...")
+    create_clean_title_image(reddit_obj["thread_title"], reddit_id, W, H)
     
-    print_substep("Creating larger text chunks for easy syncing...")
+    print_substep("Creating clean content images...")
     
-    # Get post content and split into larger, easier-to-sync chunks
+    # Get post content and split into chunks
+    story_max_length = settings.config['settings']['storymode_max_length']
     post_content = reddit_obj.get("thread_post", "")
+    if isinstance(post_content, list):
+        post_content = "\n\n".join(post_content)
+    
+    if len(post_content) > story_max_length:
+        post_content = post_content[:story_max_length] + "..."
+    
     if post_content:
-        # Create larger chunks (3-5 chunks total, 20-40 words each)
-        large_chunks = create_large_text_chunks(post_content)
+        # Create content chunks
+        chunks = create_text_chunks(post_content, max_chars_per_chunk=250)
         
-        for i, chunk in enumerate(large_chunks):
-            create_large_text_image(chunk, f"content_{i}", reddit_id, W, H)
+        for i, chunk in enumerate(chunks):
+            create_clean_content_image(chunk, f"content_{i}", reddit_id, W, H)
             if i >= 5:  # Limit to 5 chunks max
                 break
     
-    print_substep(f"Generated {min(len(large_chunks), 5)} large text chunks - easy to sync!")
+    print_substep(f"Generated {min(len(chunks), 5)} clean content images!")
 
-def create_title_image(title: str, reddit_id: str, W: int, H: int):
-    """Create a gorgeous title image with premium styling"""
-    # Create base image
-    img = Image.new('RGBA', (W, H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    
-    # Create beautiful gradient background - smaller and more elegant
-    gradient_height = H // 3  # Make it smaller
-    gradient_y_start = H // 3
-    
-    for y in range(gradient_height):
-        # Elegant purple-to-pink gradient
-        ratio = y / gradient_height
-        r = int(147 * (1 - ratio) + 199 * ratio)  # Purple to pink
-        g = int(112 * (1 - ratio) + 21 * ratio)
-        b = int(219 * (1 - ratio) + 133 * ratio)
-        alpha = int(200 * (1 - ratio * 0.3))  # Fade out gradually
-        
-        draw.rectangle([(0, gradient_y_start + y), (W, gradient_y_start + y + 1)], 
-                      fill=(r, g, b, alpha))
-    
-    # Add stylish title text
-    add_premium_text(draw, title, W, H, is_title=True)
-    
-    # Add elegant decorative elements
-    add_premium_decorations(draw, W, H)
-    
-    img.save(f"assets/temp/{reddit_id}/png/title.png", "PNG")
-
-def create_content_image(text: str, filename: str, reddit_id: str, W: int, H: int):
-    """Create elegant content images with smaller, prettier text boxes"""
+def create_clean_title_image(title: str, reddit_id: str, W: int, H: int):
+    """Create a clean title image without purple background"""
     # Create transparent base
     img = Image.new('RGBA', (W, H), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     
-    # Calculate smaller, more elegant text area
-    padding = 80
-    text_area_width = W - (padding * 2)
-    text_area_height = H // 3  # Much smaller box
+    # Load font
+    try:
+        font = ImageFont.truetype("fonts/Roboto-Bold.ttf", 80)
+    except:
+        font = ImageFont.load_default()
     
-    # Center the text area
-    x_start = padding
-    y_start = (H - text_area_height) // 2
+    # Add clean text with shadows
+    lines = textwrap.wrap(title, width=25)
+    line_height = 90
+    total_height = len(lines) * line_height
+    start_y = (H - total_height) // 2
     
-    # Create rounded rectangle background with gradient
-    corner_radius = 25
-    
-    # Draw multiple layers for glow effect
-    for i in range(8):
-        glow_alpha = int(40 * (8 - i) / 8)
-        glow_expand = i * 3
+    for i, line in enumerate(lines):
+        # Get text dimensions
+        text_bbox = draw.textbbox((0, 0), line, font=font)
+        text_width = text_bbox[2] - text_bbox[0]
+        x = (W - text_width) // 2
+        y = start_y + (i * line_height)
         
-        # Outer glow
-        draw.rounded_rectangle([
-            (x_start - glow_expand, y_start - glow_expand), 
-            (x_start + text_area_width + glow_expand, y_start + text_area_height + glow_expand)
-        ], radius=corner_radius + glow_expand, fill=(147, 112, 219, glow_alpha))
-    
-    # Main background with gradient effect
-    for i in range(text_area_height):
-        ratio = i / text_area_height
-        r = int(30 * (1 - ratio) + 50 * ratio)
-        g = int(30 * (1 - ratio) + 30 * ratio)
-        b = int(60 * (1 - ratio) + 80 * ratio)
-        alpha = 200
+        # Add shadow for readability
+        for offset in range(1, 4):
+            for dx, dy in [(-offset, -offset), (offset, -offset), 
+                          (-offset, offset), (offset, offset)]:
+                draw.text((x + dx, y + dy), line, font=font, fill=(0, 0, 0, 180))
         
-        draw.rectangle([
-            (x_start, y_start + i), 
-            (x_start + text_area_width, y_start + i + 1)
-        ], fill=(r, g, b, alpha))
+        # Draw main text
+        draw.text((x, y), line, font=font, fill=(255, 255, 255, 255))
     
-    # Add elegant border
-    border_colors = [(199, 21, 133, 255), (147, 112, 219, 255), (138, 43, 226, 255)]
-    for i, color in enumerate(border_colors):
-        draw.rounded_rectangle([
-            (x_start - i - 1, y_start - i - 1), 
-            (x_start + text_area_width + i + 1, y_start + text_area_height + i + 1)
-        ], radius=corner_radius + i, outline=color, width=2)
+    img.save(f"assets/temp/{reddit_id}/png/title.png", "PNG")
+
+def create_clean_content_image(text: str, filename: str, reddit_id: str, W: int, H: int):
+    """Create clean content images without purple background"""
+    # Create transparent base
+    img = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
     
-    # Add premium text content
-    add_premium_text(draw, text, W, H, is_title=False, 
-                    text_area_bounds=(x_start, y_start, text_area_width, text_area_height))
+    # Load font
+    try:
+        font = ImageFont.truetype("fonts/Roboto-Regular.ttf", 60)
+    except:
+        font = ImageFont.load_default()
+    
+    # Add clean text with shadows
+    lines = textwrap.wrap(text, width=30)
+    line_height = 70
+    total_height = len(lines) * line_height
+    start_y = (H - total_height) // 2
+    
+    for i, line in enumerate(lines):
+        # Get text dimensions
+        text_bbox = draw.textbbox((0, 0), line, font=font)
+        text_width = text_bbox[2] - text_bbox[0]
+        x = (W - text_width) // 2
+        y = start_y + (i * line_height)
+        
+        # Add shadow for readability
+        for offset in range(1, 4):
+            for dx, dy in [(-offset, -offset), (offset, -offset), 
+                          (-offset, offset), (offset, offset)]:
+                draw.text((x + dx, y + dy), line, font=font, fill=(0, 0, 0, 180))
+        
+        # Draw main text
+        draw.text((x, y), line, font=font, fill=(255, 255, 255, 255))
     
     img.save(f"assets/temp/{reddit_id}/png/{filename}.png", "PNG")
+
+def create_text_chunks(text: str, max_chars_per_chunk=250):
+    """Split text into readable chunks"""
+    if len(text) <= max_chars_per_chunk:
+        return [text]
+    
+    chunks = []
+    sentences = re.split(r'[.!?]+', text)
+    current_chunk = ""
+    
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+            
+        if len(current_chunk + sentence) <= max_chars_per_chunk:
+            current_chunk += sentence + ". "
+        else:
+            if current_chunk:
+                chunks.append(current_chunk.strip())
+            current_chunk = sentence + ". "
+    
+    if current_chunk:
+        chunks.append(current_chunk.strip())
+    
+    return chunks
+
+def create_title_image(title: str, reddit_id: str, W: int, H: int):
+    """Create a clean title image without purple background - OVERRIDE"""
+    return create_clean_title_image(title, reddit_id, W, H)
+
+def create_content_image(text: str, filename: str, reddit_id: str, W: int, H: int):
+    """Create clean content images without purple background - OVERRIDE"""
+    return create_clean_content_image(text, filename, reddit_id, W, H)
+
+def create_large_text_image(text: str, filename: str, reddit_id: str, W: int, H: int):
+    """Create clean large text images without purple background - OVERRIDE"""
+    return create_clean_content_image(text, filename, reddit_id, W, H)
 
 def add_premium_text(draw, text: str, W: int, H: int, is_title: bool = False, text_area_bounds=None):
     """Add premium styled text with beautiful typography"""
@@ -701,212 +770,6 @@ def add_dynamic_text(draw, text: str, W: int, H: int, text_area_bounds=None):
             
             current_y += line_height
 
-def create_title_image(title: str, reddit_id: str, W: int, H: int):
-    """Create a gorgeous title image with premium styling"""
-    # Create base image
-    img = Image.new('RGBA', (W, H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    
-    # Create beautiful gradient background - smaller and more elegant
-    gradient_height = H // 3  # Make it smaller
-    gradient_y_start = H // 3
-    
-    for y in range(gradient_height):
-        # Elegant purple-to-pink gradient
-        ratio = y / gradient_height
-        r = int(147 * (1 - ratio) + 199 * ratio)  # Purple to pink
-        g = int(112 * (1 - ratio) + 21 * ratio)
-        b = int(219 * (1 - ratio) + 133 * ratio)
-        alpha = int(200 * (1 - ratio * 0.3))  # Fade out gradually
-        
-        draw.rectangle([(0, gradient_y_start + y), (W, gradient_y_start + y + 1)], 
-                      fill=(r, g, b, alpha))
-    
-    # Add stylish title text
-    add_premium_text(draw, title, W, H, is_title=True)
-    
-    # Add elegant decorative elements
-    add_premium_decorations(draw, W, H)
-    
-    img.save(f"assets/temp/{reddit_id}/png/title.png", "PNG")
-
-def create_content_image(text: str, filename: str, reddit_id: str, W: int, H: int):
-    """Create elegant content images with smaller, prettier text boxes"""
-    # Create transparent base
-    img = Image.new('RGBA', (W, H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    
-    # Calculate smaller, more elegant text area
-    padding = 80
-    text_area_width = W - (padding * 2)
-    text_area_height = H // 3  # Much smaller box
-    
-    # Center the text area
-    x_start = padding
-    y_start = (H - text_area_height) // 2
-    
-    # Create rounded rectangle background with gradient
-    corner_radius = 25
-    
-    # Draw multiple layers for glow effect
-    for i in range(8):
-        glow_alpha = int(40 * (8 - i) / 8)
-        glow_expand = i * 3
-        
-        # Outer glow
-        draw.rounded_rectangle([
-            (x_start - glow_expand, y_start - glow_expand), 
-            (x_start + text_area_width + glow_expand, y_start + text_area_height + glow_expand)
-        ], radius=corner_radius + glow_expand, fill=(147, 112, 219, glow_alpha))
-    
-    # Main background with gradient effect
-    for i in range(text_area_height):
-        ratio = i / text_area_height
-        r = int(30 * (1 - ratio) + 50 * ratio)
-        g = int(30 * (1 - ratio) + 30 * ratio)
-        b = int(60 * (1 - ratio) + 80 * ratio)
-        alpha = 200
-        
-        draw.rectangle([
-            (x_start, y_start + i), 
-            (x_start + text_area_width, y_start + i + 1)
-        ], fill=(r, g, b, alpha))
-    
-    # Add elegant border
-    border_colors = [(199, 21, 133, 255), (147, 112, 219, 255), (138, 43, 226, 255)]
-    for i, color in enumerate(border_colors):
-        draw.rounded_rectangle([
-            (x_start - i - 1, y_start - i - 1), 
-            (x_start + text_area_width + i + 1, y_start + text_area_height + i + 1)
-        ], radius=corner_radius + i, outline=color, width=2)
-    
-    # Add premium text content
-    add_premium_text(draw, text, W, H, is_title=False, 
-                    text_area_bounds=(x_start, y_start, text_area_width, text_area_height))
-    
-    img.save(f"assets/temp/{reddit_id}/png/{filename}.png", "PNG")
-
-def add_premium_text(draw, text: str, W: int, H: int, is_title: bool = False, text_area_bounds=None):
-    """Add premium styled text with beautiful typography"""
-    if is_title:
-        font_size = 68
-        text_color = (255, 255, 255, 255)
-        stroke_color = (147, 112, 219, 200)
-        y_offset = H // 2.5
-        max_width = W - 140
-    else:
-        font_size = 42
-        text_color = (255, 255, 255, 255)
-        stroke_color = (199, 21, 133, 180)
-        # Use the bounds of the text area
-        if text_area_bounds:
-            x_start, y_start, area_width, area_height = text_area_bounds
-            y_offset = y_start + (area_height // 2)
-            max_width = area_width - 40
-        else:
-            y_offset = H // 2
-            max_width = W - 160
-    
-    # Load premium font
-    try:
-        if is_title:
-            font = ImageFont.truetype("fonts/Roboto-Bold.ttf", font_size)
-        else:
-            font = ImageFont.truetype("fonts/Roboto-Medium.ttf", font_size)
-    except:
-        font = ImageFont.load_default()
-    
-    # Word wrap the text
-    wrapped_lines = wrap_text_to_fit(text, font, max_width)
-    
-    # Calculate total text height
-    line_height = font_size + 12
-    total_height = len(wrapped_lines) * line_height
-    
-    # Start drawing from center
-    current_y = y_offset - (total_height // 2)
-    
-    for line in wrapped_lines:
-        # Get text dimensions
-        text_bbox = draw.textbbox((0, 0), line, font=font)
-        text_width = text_bbox[2] - text_bbox[0]
-        
-        # Center the text
-        x = (W - text_width) // 2
-        
-        # Multiple shadow layers for depth
-        shadow_layers = [
-            (4, 4, (0, 0, 0, 120)),
-            (3, 3, (0, 0, 0, 100)),
-            (2, 2, (0, 0, 0, 80)),
-            (1, 1, (0, 0, 0, 60))
-        ]
-        
-        # Draw shadow layers
-        for dx, dy, shadow_color in shadow_layers:
-            draw.text((x + dx, current_y + dy), line, font=font, fill=shadow_color)
-        
-        # Draw stroke/outline
-        for dx in [-2, -1, 0, 1, 2]:
-            for dy in [-2, -1, 0, 1, 2]:
-                if dx != 0 or dy != 0:
-                    draw.text((x + dx, current_y + dy), line, font=font, fill=stroke_color)
-        
-        # Draw main text with slight glow
-        draw.text((x, current_y), line, font=font, fill=text_color)
-        
-        current_y += line_height
-
-def add_premium_decorations(draw, W: int, H: int):
-    """Add premium decorative elements"""
-    import random
-    random.seed(42)  # Consistent decorations
-    
-    # Add elegant sparkles and particles
-    for _ in range(20):
-        x = random.randint(50, W - 50)
-        y = random.randint(50, H - 50)
-        size = random.randint(2, 6)
-        
-        # Sparkle colors
-        colors = [
-            (255, 255, 255, 200),
-            (199, 21, 133, 180),
-            (147, 112, 219, 160),
-            (138, 43, 226, 140)
-        ]
-        color = random.choice(colors)
-        
-        # Draw diamond sparkle
-        points = [
-            (x, y - size),      # top
-            (x + size, y),      # right
-            (x, y + size),      # bottom
-            (x - size, y)       # left
-        ]
-        draw.polygon(points, fill=color)
-        
-        # Add small center glow
-        draw.ellipse((x-1, y-1, x+1, y+1), fill=(255, 255, 255, 255))
-    
-    # Add elegant corner decorations
-    corner_size = 30
-    corner_color = (199, 21, 133, 100)
-    
-    # Top corners
-    for corner_x in [30, W-60]:
-        for i in range(3):
-            draw.arc((corner_x-corner_size+i*5, 30-corner_size+i*5, 
-                     corner_x+corner_size-i*5, 30+corner_size-i*5), 
-                    start=0, end=90, fill=corner_color, width=2)
-    
-    # Bottom corners  
-    for corner_x in [30, W-60]:
-        for i in range(3):
-            draw.arc((corner_x-corner_size+i*5, H-60-corner_size+i*5, 
-                     corner_x+corner_size-i*5, H-60+corner_size-i*5), 
-                    start=180, end=270, fill=corner_color, width=2)
-
 def create_large_text_chunks(text, target_chunks=4):
     """Split text into larger chunks for easier subtitle syncing"""
     # Handle case where text might be a list
@@ -966,321 +829,4 @@ def format_large_chunk(text):
     if current_line:
         lines.append(' '.join(current_line))
     
-    return '\n'.join(lines)
-
-def create_large_text_image(text: str, filename: str, reddit_id: str, W: int, H: int):
-    """Create larger text images optimized for easy syncing"""
-    # Create transparent base
-    img = Image.new('RGBA', (W, H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    
-    # Larger text area for substantial content
-    padding = 60
-    text_area_width = W - (padding * 2)
-    text_area_height = H // 2.5  # Bigger area for more text
-    
-    # Center the text area
-    x_start = padding
-    y_start = (H - text_area_height) // 2
-    
-    # Create elegant rounded rectangle with premium styling
-    corner_radius = 25
-    
-    # Multi-layer glow effect
-    for i in range(8):
-        glow_alpha = int(45 * (8 - i) / 8)
-        glow_expand = i * 3
-        
-        # Elegant outer glow
-        draw.rounded_rectangle([
-            (x_start - glow_expand, y_start - glow_expand), 
-            (x_start + text_area_width + glow_expand, y_start + text_area_height + glow_expand)
-        ], radius=corner_radius + glow_expand, fill=(138, 43, 226, glow_alpha))
-    
-    # Beautiful gradient background
-    for i in range(text_area_height):
-        ratio = i / text_area_height
-        r = int(35 * (1 - ratio) + 55 * ratio)
-        g = int(25 * (1 - ratio) + 35 * ratio)
-        b = int(70 * (1 - ratio) + 100 * ratio)
-        alpha = 210
-        
-        draw.rectangle([
-            (x_start, y_start + i), 
-            (x_start + text_area_width, y_start + i + 1)
-        ], fill=(r, g, b, alpha))
-    
-    # Premium border with multiple colors
-    border_colors = [(255, 105, 180, 255), (138, 43, 226, 255), (75, 0, 130, 255)]
-    for i, color in enumerate(border_colors):
-        draw.rounded_rectangle([
-            (x_start - i - 1, y_start - i - 1), 
-            (x_start + text_area_width + i + 1, y_start + text_area_height + i + 1)
-        ], radius=corner_radius + i, outline=color, width=2)
-    
-    # Add large text content
-    add_large_text(draw, text, W, H, text_area_bounds=(x_start, y_start, text_area_width, text_area_height))
-    
-    img.save(f"assets/temp/{reddit_id}/png/{filename}.png", "PNG")
-
-def add_large_text(draw, text: str, W: int, H: int, text_area_bounds=None):
-    """Add large text optimized for easy reading and syncing"""
-    font_size = 44  # Good size for readability
-    text_color = (255, 255, 255, 255)
-    stroke_color = (255, 105, 180, 200)
-    
-    # Load font
-    try:
-        font = ImageFont.truetype("fonts/Roboto-Bold.ttf", font_size)
-    except:
-        font = ImageFont.load_default()
-    
-    # Handle multi-line text
-    lines = text.split('\n') if '\n' in text else [text]
-    
-    # Calculate positioning
-    if text_area_bounds:
-        x_start, y_start, area_width, area_height = text_area_bounds
-        
-        line_height = font_size + 10
-        total_height = len(lines) * line_height
-        
-        # Center vertically in the text area
-        current_y = y_start + (area_height - total_height) // 2
-        
-        for line in lines:
-            # Get text dimensions
-            text_bbox = draw.textbbox((0, 0), line, font=font)
-            text_width = text_bbox[2] - text_bbox[0]
-            
-            # Center the text horizontally
-            x = (W - text_width) // 2
-            
-            # Premium shadow layers
-            shadow_layers = [
-                (4, 4, (0, 0, 0, 140)),
-                (3, 3, (0, 0, 0, 120)),
-                (2, 2, (0, 0, 0, 100)),
-                (1, 1, (0, 0, 0, 80))
-            ]
-            
-            # Draw shadow layers
-            for dx, dy, shadow_color in shadow_layers:
-                draw.text((x + dx, current_y + dy), line, font=font, fill=shadow_color)
-            
-            # Draw stroke/outline
-            for dx in [-2, -1, 0, 1, 2]:
-                for dy in [-2, -1, 0, 1, 2]:
-                    if dx != 0 or dy != 0:
-                        draw.text((x + dx, current_y + dy), line, font=font, fill=stroke_color)
-            
-            # Draw main text
-            draw.text((x, current_y), line, font=font, fill=text_color)
-            
-            current_y += line_height
-
-def create_title_image(title: str, reddit_id: str, W: int, H: int):
-    """Create a gorgeous title image with premium styling"""
-    # Create base image
-    img = Image.new('RGBA', (W, H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    
-    # Create beautiful gradient background - smaller and more elegant
-    gradient_height = H // 3  # Make it smaller
-    gradient_y_start = H // 3
-    
-    for y in range(gradient_height):
-        # Elegant purple-to-pink gradient
-        ratio = y / gradient_height
-        r = int(147 * (1 - ratio) + 199 * ratio)  # Purple to pink
-        g = int(112 * (1 - ratio) + 21 * ratio)
-        b = int(219 * (1 - ratio) + 133 * ratio)
-        alpha = int(200 * (1 - ratio * 0.3))  # Fade out gradually
-        
-        draw.rectangle([(0, gradient_y_start + y), (W, gradient_y_start + y + 1)], 
-                      fill=(r, g, b, alpha))
-    
-    # Add stylish title text
-    add_premium_text(draw, title, W, H, is_title=True)
-    
-    # Add elegant decorative elements
-    add_premium_decorations(draw, W, H)
-    
-    img.save(f"assets/temp/{reddit_id}/png/title.png", "PNG")
-
-def create_content_image(text: str, filename: str, reddit_id: str, W: int, H: int):
-    """Create elegant content images with smaller, prettier text boxes"""
-    # Create transparent base
-    img = Image.new('RGBA', (W, H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    
-    # Calculate smaller, more elegant text area
-    padding = 80
-    text_area_width = W - (padding * 2)
-    text_area_height = H // 3  # Much smaller box
-    
-    # Center the text area
-    x_start = padding
-    y_start = (H - text_area_height) // 2
-    
-    # Create rounded rectangle background with gradient
-    corner_radius = 25
-    
-    # Draw multiple layers for glow effect
-    for i in range(8):
-        glow_alpha = int(40 * (8 - i) / 8)
-        glow_expand = i * 3
-        
-        # Outer glow
-        draw.rounded_rectangle([
-            (x_start - glow_expand, y_start - glow_expand), 
-            (x_start + text_area_width + glow_expand, y_start + text_area_height + glow_expand)
-        ], radius=corner_radius + glow_expand, fill=(147, 112, 219, glow_alpha))
-    
-    # Main background with gradient effect
-    for i in range(text_area_height):
-        ratio = i / text_area_height
-        r = int(30 * (1 - ratio) + 50 * ratio)
-        g = int(30 * (1 - ratio) + 30 * ratio)
-        b = int(60 * (1 - ratio) + 80 * ratio)
-        alpha = 200
-        
-        draw.rectangle([
-            (x_start, y_start + i), 
-            (x_start + text_area_width, y_start + i + 1)
-        ], fill=(r, g, b, alpha))
-    
-    # Add elegant border
-    border_colors = [(199, 21, 133, 255), (147, 112, 219, 255), (138, 43, 226, 255)]
-    for i, color in enumerate(border_colors):
-        draw.rounded_rectangle([
-            (x_start - i - 1, y_start - i - 1), 
-            (x_start + text_area_width + i + 1, y_start + text_area_height + i + 1)
-        ], radius=corner_radius + i, outline=color, width=2)
-    
-    # Add premium text content
-    add_premium_text(draw, text, W, H, is_title=False, 
-                    text_area_bounds=(x_start, y_start, text_area_width, text_area_height))
-    
-    img.save(f"assets/temp/{reddit_id}/png/{filename}.png", "PNG")
-
-def add_premium_text(draw, text: str, W: int, H: int, is_title: bool = False, text_area_bounds=None):
-    """Add premium styled text with beautiful typography"""
-    if is_title:
-        font_size = 68
-        text_color = (255, 255, 255, 255)
-        stroke_color = (147, 112, 219, 200)
-        y_offset = H // 2.5
-        max_width = W - 140
-    else:
-        font_size = 42
-        text_color = (255, 255, 255, 255)
-        stroke_color = (199, 21, 133, 180)
-        # Use the bounds of the text area
-        if text_area_bounds:
-            x_start, y_start, area_width, area_height = text_area_bounds
-            y_offset = y_start + (area_height // 2)
-            max_width = area_width - 40
-        else:
-            y_offset = H // 2
-            max_width = W - 160
-    
-    # Load premium font
-    try:
-        if is_title:
-            font = ImageFont.truetype("fonts/Roboto-Bold.ttf", font_size)
-        else:
-            font = ImageFont.truetype("fonts/Roboto-Medium.ttf", font_size)
-    except:
-        font = ImageFont.load_default()
-    
-    # Word wrap the text
-    wrapped_lines = wrap_text_to_fit(text, font, max_width)
-    
-    # Calculate total text height
-    line_height = font_size + 12
-    total_height = len(wrapped_lines) * line_height
-    
-    # Start drawing from center
-    current_y = y_offset - (total_height // 2)
-    
-    for line in wrapped_lines:
-        # Get text dimensions
-        text_bbox = draw.textbbox((0, 0), line, font=font)
-        text_width = text_bbox[2] - text_bbox[0]
-        
-        # Center the text
-        x = (W - text_width) // 2
-        
-        # Multiple shadow layers for depth
-        shadow_layers = [
-            (4, 4, (0, 0, 0, 120)),
-            (3, 3, (0, 0, 0, 100)),
-            (2, 2, (0, 0, 0, 80)),
-            (1, 1, (0, 0, 0, 60))
-        ]
-        
-        # Draw shadow layers
-        for dx, dy, shadow_color in shadow_layers:
-            draw.text((x + dx, current_y + dy), line, font=font, fill=shadow_color)
-        
-        # Draw stroke/outline
-        for dx in [-2, -1, 0, 1, 2]:
-            for dy in [-2, -1, 0, 1, 2]:
-                if dx != 0 or dy != 0:
-                    draw.text((x + dx, current_y + dy), line, font=font, fill=stroke_color)
-        
-        # Draw main text with slight glow
-        draw.text((x, current_y), line, font=font, fill=text_color)
-        
-        current_y += line_height
-
-def add_premium_decorations(draw, W: int, H: int):
-    """Add premium decorative elements"""
-    import random
-    random.seed(42)  # Consistent decorations
-    
-    # Add elegant sparkles and particles
-    for _ in range(20):
-        x = random.randint(50, W - 50)
-        y = random.randint(50, H - 50)
-        size = random.randint(2, 6)
-        
-        # Sparkle colors
-        colors = [
-            (255, 255, 255, 200),
-            (199, 21, 133, 180),
-            (147, 112, 219, 160),
-            (138, 43, 226, 140)
-        ]
-        color = random.choice(colors)
-        
-        # Draw diamond sparkle
-        points = [
-            (x, y - size),      # top
-            (x + size, y),      # right
-            (x, y + size),      # bottom
-            (x - size, y)       # left
-        ]
-        draw.polygon(points, fill=color)
-        
-        # Add small center glow
-        draw.ellipse((x-1, y-1, x+1, y+1), fill=(255, 255, 255, 255))
-    
-    # Add elegant corner decorations
-    corner_size = 30
-    corner_color = (199, 21, 133, 100)
-    
-    # Top corners
-    for corner_x in [30, W-60]:
-        for i in range(3):
-            draw.arc((corner_x-corner_size+i*5, 30-corner_size+i*5, 
-                     corner_x+corner_size-i*5, 30+corner_size-i*5), 
-                    start=0, end=90, fill=corner_color, width=2)
-    
-    # Bottom corners  
-    for corner_x in [30, W-60]:
-        for i in range(3):
-            draw.arc((corner_x-corner_size+i*5, H-60-corner_size+i*5, 
-                     corner_x+corner_size-i*5, H-60+corner_size-i*5), 
-                    start=180, end=270, fill=corner_color, width=2) 
+    return '\n'.join(lines) 

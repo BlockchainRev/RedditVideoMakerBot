@@ -6,7 +6,8 @@ from random import randrange
 from typing import Any, Dict, Tuple
 
 import yt_dlp
-from moviepy import AudioFileClip, VideoFileClip
+from moviepy.audio.io.AudioFileClip import AudioFileClip
+from moviepy.video.io.VideoFileClip import VideoFileClip
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 
 from utils import settings

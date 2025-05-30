@@ -14,7 +14,7 @@ except ImportError:
     from moviepy.audio.fx import MultiplyVolume
     def volumex(clip, volume):
         return clip.with_effects([MultiplyVolume(volume)])
-from moviepy import AudioFileClip
+from moviepy.audio.io.AudioFileClip import AudioFileClip
 from rich.progress import track
 
 from utils import settings
