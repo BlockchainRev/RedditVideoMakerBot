@@ -478,7 +478,7 @@ def make_final_video(
             
             # Add title image
             if os.path.exists(f"assets/temp/{reddit_id}/png/title.png"):
-                title_img = ffmpeg.input(f"assets/temp/{reddit_id}/png/title.png").video.filter("scale", screenshot_width, -1)
+                title_img = ffmpeg.input(f"assets/temp/{reddit_id}/png/title.png").video.filter("scale", W, H)
                 result_video = result_video.overlay(
                     title_img,
                     x="(main_w-overlay_w)/2",
@@ -490,7 +490,7 @@ def make_final_video(
             # Add content images
             for i in range(actual_content_clips):
                 if os.path.exists(f"assets/temp/{reddit_id}/png/content_{i}.png"):
-                    content_img = ffmpeg.input(f"assets/temp/{reddit_id}/png/content_{i}.png").video.filter("scale", screenshot_width, -1)
+                    content_img = ffmpeg.input(f"assets/temp/{reddit_id}/png/content_{i}.png").video.filter("scale", W, H)
                     result_video = result_video.overlay(
                         content_img,
                         x="(main_w-overlay_w)/2", 

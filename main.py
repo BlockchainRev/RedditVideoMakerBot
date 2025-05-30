@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import math
 import sys
-from os import name
+from os import name, listdir
 from pathlib import Path
 from subprocess import Popen
 from typing import NoReturn
@@ -22,7 +22,7 @@ from video_creation.background import (
     get_background_config,
 )
 from video_creation.final_video import make_final_video
-from video_creation.text_image_generator import generate_dream_images
+from video_creation.text_image_generator import render_chunks_to_images, chunk_text_for_tts
 from video_creation.voices import save_text_to_mp3
 
 __VERSION__ = "3.3.0"
@@ -51,8 +51,47 @@ def main(POST_ID=None) -> None:
     length, number_of_comments = save_text_to_mp3(reddit_object)
     length = math.ceil(length)
     
-    # Generate the dream images instead of taking screenshots
-    generate_dream_images(reddit_object)
+    # Generate the dream images
+    image_dir = Path(f"assets/temp/{redditid}/png")
+    image_dir.mkdir(parents=True, exist_ok=True) # Ensure directory exists
+
+    # Render title image
+    title_text = reddit_object['thread_title']
+    title_chunks = chunk_text_for_tts(title_text)
+    if title_chunks: # Ensure there's a title to render
+        title_image_paths = render_chunks_to_images(chunks=title_chunks, out_dir=image_dir, font_path="fonts/Roboto-Bold.ttf", base_size=70) # Render title
+        # Rename the first generated image for the title to title.png
+        if title_image_paths:
+            first_title_image_path = title_image_paths[0]
+            if first_title_image_path.exists() and first_title_image_path.name != "title.png":
+                 # Construct the target path for title.png within the same directory
+                target_title_path = image_dir / "title.png"
+                # If title.png already exists from a previous chunk, remove it or handle as needed
+                if target_title_path.exists():
+                    target_title_path.unlink() # Remove existing title.png to avoid error on rename
+                first_title_image_path.rename(target_title_path)
+            # If more than one image was generated for the title, these are currently ignored.
+            # This might need a more sophisticated handling if titles can span multiple images.
+
+    # Render post content images
+    thread_post_text = reddit_object['thread_post']
+    if isinstance(thread_post_text, list):
+        thread_post_text = " ".join(thread_post_text)
+    
+    post_chunks = chunk_text_for_tts(thread_post_text)
+    if post_chunks:
+        # Save current files in dir to avoid renaming them
+        # existing_files_before_render = set(os.listdir(image_dir)) # No longer needed with direct paths
+        post_image_paths = render_chunks_to_images(chunks=post_chunks, out_dir=image_dir) # Render post content
+        
+        # Rename post content images to content_0.png, content_1.png, etc.
+        for idx, source_path in enumerate(post_image_paths):
+            target_path = image_dir / f"content_{idx}.png"
+            if source_path.exists() and source_path != target_path and source_path.name != "title.png":
+                # If target_path (e.g. content_0.png) exists from a previous run or title processing, remove it
+                if target_path.exists():
+                    target_path.unlink()
+                source_path.rename(target_path)
     
     bg_config = {
         "video": get_background_config("video"),
