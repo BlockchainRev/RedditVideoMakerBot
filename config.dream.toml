@@ -58,4 +58,22 @@ tiktok_sessionid = ""
 python_voice = "1"
 py_voice_num = "2"
 silence_duration = 0.5  # Slightly longer pauses for dream content
-no_emojis = false  # Keep emojis for visual appeal 
+no_emojis = false  # Keep emojis for visual appeal
+
+[dream_analysis]
+# Dream analysis configuration using lucidrem.com
+enabled = false  # Set to true to enable dream analysis
+supabase_url = ""  # Your Supabase project URL
+supabase_key = ""  # Your Supabase service role key
+edge_function_name = "analyze-dream"  # Edge function name for analysis
+timeout_seconds = 30
+cache_analysis = true  # Cache results to avoid duplicate API calls
+
+# Analysis content options
+include_symbols = true
+include_emotions = true
+include_meanings = true
+limit_to_sentences = 2  # Analyze only the first N sentences (0 = analyze full text)
+max_analysis_length = 800
+analysis_voice_style = "analytical"
+include_in_title = false  # Add "- With Professional Analysis" to video title 

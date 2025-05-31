@@ -16,6 +16,7 @@ Features:
 import hashlib
 import json
 import os
+import re
 import time
 import uuid
 from pathlib import Path
@@ -37,11 +38,82 @@ class DreamAnalysisError(Exception):
     pass
 
 
+def extract_first_sentences(text: str, num_sentences: int = 2) -> str:
+    """
+    Extract the first N sentences from text
+    
+    Args:
+        text (str): The input text
+        num_sentences (int): Number of sentences to extract (default 2)
+        
+    Returns:
+        str: The first N sentences, or the original text if fewer sentences exist
+    """
+    if not text.strip():
+        return text
+    
+    # Clean the text first
+    text = text.strip()
+    
+    # Split by sentence endings: periods, exclamation marks, and question marks
+    # Use regex to handle common sentence patterns
+    sentence_pattern = r'([.!?]+)(\s+|$)'
+    
+    # Find all sentence endings
+    sentences = []
+    current_sentence = ""
+    
+    # Split by sentence delimiters while preserving the delimiters
+    parts = re.split(sentence_pattern, text)
+    
+    i = 0
+    while i < len(parts) and len(sentences) < num_sentences:
+        part = parts[i]
+        
+        if i + 1 < len(parts) and re.match(r'[.!?]+', parts[i + 1]):
+            # This part ends with punctuation
+            current_sentence += part + parts[i + 1]
+            sentences.append(current_sentence.strip())
+            current_sentence = ""
+            i += 2  # Skip the punctuation part
+            # Skip whitespace if present
+            if i < len(parts):
+                i += 1
+        else:
+            current_sentence += part
+            i += 1
+    
+    # If we couldn't find enough complete sentences, but have content, use what we have
+    if not sentences and current_sentence.strip():
+        sentences.append(current_sentence.strip())
+    
+    result = " ".join(sentences)
+    
+    # If the result is empty or very short, return the original text
+    if len(result.strip()) < 20:
+        return text
+    
+    return result
+
+
 class DreamAnalyzer:
     """Main class for handling dream analysis via Supabase edge functions"""
     
     def __init__(self):
         """Initialize the dream analyzer with configuration settings"""
+        # Ensure settings.config is loaded
+        if not hasattr(settings, 'config') or not isinstance(settings.config, dict):
+            # Load configuration if not already loaded
+            from pathlib import Path
+            directory = Path().absolute()
+            settings.config = settings.check_toml(
+                f"{directory}/utils/.config.template.toml", 
+                f"{directory}/config.toml"
+            )
+            if not settings.config:
+                # Fallback to empty config if loading fails
+                settings.config = {}
+        
         self.config = settings.config.get("dream_analysis", {})
         self.enabled = self.config.get("enabled", False)
         self.supabase_url = self.config.get("supabase_url", "").strip()
@@ -56,6 +128,9 @@ class DreamAnalyzer:
         self.include_meanings = self.config.get("include_meanings", True)
         self.max_length = self.config.get("max_analysis_length", 800)
         self.voice_style = self.config.get("analysis_voice_style", "analytical")
+        
+        # Limit analysis to first 2 sentences by default
+        self.limit_to_sentences = self.config.get("limit_to_sentences", 2)
         
         # Create cache directory if it doesn't exist
         if self.cache_enabled:
@@ -356,6 +431,15 @@ class DreamAnalyzer:
         if self.include_meanings and analysis.get("interpretation"):
             interpretation = analysis["interpretation"]
             if interpretation and interpretation.strip():
+                # 🌙 NEW: Limit the analysis OUTPUT to first N sentences (not the input)
+                if self.limit_to_sentences > 0:
+                    original_interpretation = interpretation
+                    interpretation = extract_first_sentences(interpretation, self.limit_to_sentences)
+                    if len(interpretation) < len(original_interpretation):
+                        print_substep(f"✂️ Limited analysis output to first {self.limit_to_sentences} sentences ({len(interpretation)} chars vs {len(original_interpretation)} original)", "green")
+                    else:
+                        print_substep(f"Analysis output has ≤{self.limit_to_sentences} sentences, no limiting needed", "blue")
+                
                 formatted["sections"].append({
                     "type": "interpretation",
                     "title": "🌙 Dream Analysis",
@@ -372,7 +456,7 @@ class DreamAnalyzer:
             # Just use the interpretation content directly for TTS
             formatted["full_text"] = formatted["sections"][0]["content"]
         
-        # Truncate if too long
+        # Truncate if too long (backup safety check)
         if len(formatted["full_text"]) > self.max_length:
             formatted["full_text"] = formatted["full_text"][:self.max_length - 3] + "..."
             # Also update the section content
@@ -401,6 +485,11 @@ class DreamAnalyzer:
             print_substep("Dream text too short for analysis (minimum 50 characters)", "yellow")
             return None
         
+        # Debug: Show original text length and limit setting
+        print_substep(f"Full dream text for analysis: {len(dream_text)} characters", "blue")
+        print_substep(f"Analysis output will be limited to: {self.limit_to_sentences} sentences", "blue")
+        
+        # Send FULL dream text to analysis API (removed sentence limiting here)
         if len(dream_text) > 5000:  # Truncate very long dreams
             print_substep("Dream text truncated to 5000 characters for analysis", "yellow")
             dream_text = dream_text[:5000]
@@ -413,13 +502,13 @@ class DreamAnalyzer:
             if cached_analysis:
                 return self._format_analysis_for_video(cached_analysis)
             
-            # Call the analysis API
+            # Call the analysis API with FULL dream text
             analysis_result = self._call_supabase_edge_function(dream_text)
             
             # Save to cache
             self._save_to_cache(cache_key, analysis_result)
             
-            # Format for video creation
+            # Format for video creation (this is where sentence limiting happens now)
             formatted_analysis = self._format_analysis_for_video(analysis_result)
             
             return formatted_analysis

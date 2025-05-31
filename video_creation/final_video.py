@@ -1,6 +1,8 @@
 import multiprocessing
 import os
 import re
+import subprocess
+import json
 import tempfile
 import textwrap
 import threading
@@ -195,7 +197,50 @@ def make_final_video(
 
     print_step("Creating the final video 🎥")
 
-    background_clip = ffmpeg.input(prepare_background(reddit_id, W=W, H=H))
+    # Get the background video path
+    background_video_path = prepare_background(reddit_id, W=W, H=H)
+    
+    # Create properly cropped background instead of stretching
+    
+    # Probe the background video to get its dimensions
+    try:
+        probe_cmd = [
+            'ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_streams',
+            background_video_path
+        ]
+        
+        result = subprocess.run(probe_cmd, capture_output=True, text=True)
+        if result.returncode == 0:
+            video_info = json.loads(result.stdout)
+            video_stream = next(s for s in video_info['streams'] if s['codec_type'] == 'video')
+            orig_width = int(video_stream['width'])
+            orig_height = int(video_stream['height'])
+            
+            # Calculate proper scaling to maintain aspect ratio while filling target resolution
+            scale_factor = max(W / orig_width, H / orig_height)  # Use max to ensure full coverage
+            new_width = int(orig_width * scale_factor)
+            new_height = int(orig_height * scale_factor)
+            
+            # Calculate crop offsets to center the image
+            crop_x = (new_width - W) // 2 if new_width > W else 0
+            crop_y = (new_height - H) // 2 if new_height > H else 0
+            
+            print_substep(f"📐 Background scaling: {orig_width}x{orig_height} → {new_width}x{new_height} → crop to {W}x{H}")
+            
+            # Apply the scale and crop filter to the background
+            background_clip = ffmpeg.input(background_video_path).filter(
+                'scale', new_width, new_height
+            ).filter(
+                'crop', W, H, crop_x, crop_y
+            )
+        else:
+            print_substep("⚠️ Could not probe background video, using simple scale", "yellow")
+            # Fallback to simple scaling if probe fails
+            background_clip = ffmpeg.input(background_video_path).filter("scale", W, H)
+    except Exception as e:
+        print_substep(f"⚠️ Error with background cropping ({str(e)}), using simple scale", "yellow")
+        # Fallback to simple scaling if anything goes wrong
+        background_clip = ffmpeg.input(background_video_path).filter("scale", W, H)
 
     # Gather all audio clips
     audio_clips = list()
@@ -305,7 +350,7 @@ def make_final_video(
             image_clips.insert(
                 1,
                 ffmpeg.input(f"assets/temp/{reddit_id}/png/story_content.png").filter(
-                    "scale", W*.75, H*.5
+                    "scale", W*.5, H*.5
                 ),
             )
             background_clip = background_clip.overlay(
@@ -357,7 +402,7 @@ def make_final_video(
                         
                         # Add image clip
                         analysis_image_clip = ffmpeg.input(image_file)["v"].filter(
-                            "scale", W*.75, H*.5
+                            "scale", W*.5, H*.5
                         )
                         
                         # Overlay the analysis image during its audio duration
@@ -382,7 +427,7 @@ def make_final_video(
         for i in range(0, number_of_clips + 1):
             image_clips.append(
                 ffmpeg.input(f"assets/temp/{reddit_id}/png/comment_{i}.png")["v"].filter(
-                    "scale", W*.75, H*.5
+                    "scale", W*.5, H*.5
                 )
             )
             image_overlay = image_clips[i].filter("colorchannelmixer", aa=opacity)
@@ -457,7 +502,6 @@ def make_final_video(
         fontcolor="White",
         fontfile=os.path.join("fonts", "Roboto-Regular.ttf"),
     )
-    background_clip = background_clip.filter("scale", W, H)
     print_step("Rendering the video 🎥")
     from tqdm import tqdm
 
@@ -491,8 +535,41 @@ def make_final_video(
         else:
             mixed_audio = main_audio
         
-        # Scale background to target resolution and loop it for the duration
-        scaled_background = background_video.filter("scale", W, H).filter("loop", loop=-1, size=int(audio_duration * 25), start=0)
+        # Apply proper scaling and cropping to background like above
+        try:
+            probe_cmd = [
+                'ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_streams',
+                f"assets/temp/{reddit_id}/background.mp4"
+            ]
+            
+            result = subprocess.run(probe_cmd, capture_output=True, text=True)
+            if result.returncode == 0:
+                video_info = json.loads(result.stdout)
+                video_stream = next(s for s in video_info['streams'] if s['codec_type'] == 'video')
+                orig_width = int(video_stream['width'])
+                orig_height = int(video_stream['height'])
+                
+                # Calculate proper scaling to maintain aspect ratio while filling target resolution
+                scale_factor = max(W / orig_width, H / orig_height)  # Use max to ensure full coverage
+                new_width = int(orig_width * scale_factor)
+                new_height = int(orig_height * scale_factor)
+                
+                # Calculate crop offsets to center the image
+                crop_x = (new_width - W) // 2 if new_width > W else 0
+                crop_y = (new_height - H) // 2 if new_height > H else 0
+                
+                # Apply the scale and crop filter then loop for duration
+                scaled_background = background_video.filter(
+                    'scale', new_width, new_height
+                ).filter(
+                    'crop', W, H, crop_x, crop_y
+                ).filter("loop", loop=-1, size=int(audio_duration * 25), start=0)
+            else:
+                # Fallback to simple scaling if probe fails
+                scaled_background = background_video.filter("scale", W, H).filter("loop", loop=-1, size=int(audio_duration * 25), start=0)
+        except Exception as e:
+            # Fallback to simple scaling if anything goes wrong
+            scaled_background = background_video.filter("scale", W, H).filter("loop", loop=-1, size=int(audio_duration * 25), start=0)
         
         # Add text overlay for credit
         credit_text = f"Background by {background_config['video'][2]}"

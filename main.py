@@ -117,7 +117,7 @@ def main(POST_ID=None) -> None:
                 # Each sentence becomes one image
                 # render_chunks_to_images expects a list of chunks, so pass [sentence_text]
                 # It will save as 000.png in the out_dir for this single chunk
-                sentence_image_paths = render_chunks_to_images(chunks=[sentence_text], out_dir=image_dir)
+                sentence_image_paths = render_chunks_to_images(chunks=[sentence_text], out_dir=image_dir, font_path="fonts/Roboto-Bold.ttf")
                 if sentence_image_paths:
                     source_path = sentence_image_paths[0] # Should be one image per sentence
                     target_path = image_dir / f"content_{post_images_generated_count}.png"
@@ -131,7 +131,7 @@ def main(POST_ID=None) -> None:
             if isinstance(thread_post_text_source, str) and thread_post_text_source.strip():
                 post_chunks = chunk_text_for_tts(thread_post_text_source)
                 if post_chunks:
-                    post_image_paths = render_chunks_to_images(chunks=post_chunks, out_dir=image_dir)
+                    post_image_paths = render_chunks_to_images(chunks=post_chunks, out_dir=image_dir, font_path="fonts/Roboto-Bold.ttf")
                     for i, source_path in enumerate(post_image_paths):
                         target_path = image_dir / f"content_{post_images_generated_count}.png"
                         if source_path.exists() and source_path != target_path and source_path.name != "title.png":
@@ -149,7 +149,7 @@ def main(POST_ID=None) -> None:
         if thread_post_text_for_chunking.strip():
             post_chunks = chunk_text_for_tts(thread_post_text_for_chunking)
             if post_chunks:
-                post_image_paths = render_chunks_to_images(chunks=post_chunks, out_dir=image_dir)
+                post_image_paths = render_chunks_to_images(chunks=post_chunks, out_dir=image_dir, font_path="fonts/Roboto-Bold.ttf")
                 for i, source_path in enumerate(post_image_paths): # Changed idx to i to avoid conflict
                     target_path = image_dir / f"content_{post_images_generated_count}.png"
                     # Check source_path.name != "title.png" is important if title image was also saved as 000.png and not yet renamed

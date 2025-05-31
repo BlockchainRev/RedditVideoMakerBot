@@ -29,6 +29,7 @@ max_analysis_length = { optional = true, type = "int", default = 800, example = 
 include_symbols = { optional = true, type = "bool", default = true, example = true, options = [true, false], explanation = "Include symbolic interpretations in the analysis" }
 include_emotions = { optional = true, type = "bool", default = true, example = true, options = [true, false], explanation = "Include emotional analysis in the interpretation" }
 include_meanings = { optional = true, type = "bool", default = true, example = true, options = [true, false], explanation = "Include general dream meanings and interpretations" }
+limit_to_sentences = { optional = true, type = "int", default = 2, example = 3, nmin = 0, nmax = 10, explanation = "Analyze only the first N sentences of the dream (0 = analyze full text)", oob_error = "Sentence limit should be between 0 and 10" }
 analysis_voice_style = { optional = true, default = "analytical", example = "mystical", options = ["analytical", "mystical", "scientific"], explanation = "Style of voice/tone for analysis narration" }
 cache_analysis = { optional = true, type = "bool", default = true, example = true, options = [true, false], explanation = "Cache analysis results to avoid duplicate API calls for the same dream content" }
 timeout_seconds = { optional = true, type = "int", default = 30, example = 15, nmin = 5, nmax = 60, explanation = "Timeout for API calls to Supabase edge function in seconds", oob_error = "Timeout should be between 5 and 60 seconds" }

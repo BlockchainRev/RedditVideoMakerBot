@@ -60,10 +60,8 @@ def imagemaker(theme, reddit_obj: dict, txtclr, padding=5, transparent=False) ->
     texts = reddit_obj["thread_post"]
     id = re.sub(r"[^\w\s-]", "", reddit_obj["thread_id"])
 
-    if transparent:
-        font = ImageFont.truetype(os.path.join("fonts", "Roboto-Bold.ttf"), 100)
-    else:
-        font = ImageFont.truetype(os.path.join("fonts", "Roboto-Regular.ttf"), 100)
+    # Always use bold font for better readability
+    font = ImageFont.truetype(os.path.join("fonts", "Roboto-Bold.ttf"), 100)
     size = (1920, 1080)
 
     image = Image.new("RGBA", size, theme)
