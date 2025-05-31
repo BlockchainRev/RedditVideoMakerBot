@@ -19,6 +19,20 @@ min_comments = { default = 5, optional = false, nmin = 0, type = "int", explanat
 ai_similarity_enabled = {optional = true, option = [true, false], default = true, type = "bool", explanation = "Threads read from Reddit are sorted based on their similarity to dream-related keywords"}
 ai_similarity_keywords = {optional = true, type="str", example= 'dream, nightmare, sleep, vision, lucid, subconscious', explanation = "Dream-related keywords used to sort Reddit threads by relevance", default = "dream, nightmare, sleep, vision, lucid, subconscious"}
 
+[dream_analysis]
+enabled = { optional = true, type = "bool", default = false, example = false, options = [true, false], explanation = "Enable dream analysis using lucidrem.com's analysis system via Supabase edge function" }
+supabase_url = { optional = true, default = "", example = "https://your-project.supabase.co", explanation = "Your Supabase project URL for dream analysis API calls" }
+supabase_key = { optional = true, default = "", example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", explanation = "Your Supabase anon key for API authentication" }
+edge_function_name = { optional = true, default = "analyze-dream", example = "analyze-dream", explanation = "Name of your Supabase edge function that handles dream analysis" }
+analysis_placement = { optional = true, default = "end", example = "end", options = ["end", "middle", "separate"], explanation = "Where to place analysis in video: 'end' (after dream), 'middle' (between dream sections), 'separate' (dedicated analysis section)" }
+max_analysis_length = { optional = true, type = "int", default = 800, example = 600, nmin = 100, nmax = 2000, explanation = "Maximum length of dream analysis text in characters", oob_error = "Analysis length should be between 100 and 2000 characters" }
+include_symbols = { optional = true, type = "bool", default = true, example = true, options = [true, false], explanation = "Include symbolic interpretations in the analysis" }
+include_emotions = { optional = true, type = "bool", default = true, example = true, options = [true, false], explanation = "Include emotional analysis in the interpretation" }
+include_meanings = { optional = true, type = "bool", default = true, example = true, options = [true, false], explanation = "Include general dream meanings and interpretations" }
+analysis_voice_style = { optional = true, default = "analytical", example = "mystical", options = ["analytical", "mystical", "scientific"], explanation = "Style of voice/tone for analysis narration" }
+cache_analysis = { optional = true, type = "bool", default = true, example = true, options = [true, false], explanation = "Cache analysis results to avoid duplicate API calls for the same dream content" }
+timeout_seconds = { optional = true, type = "int", default = 30, example = 15, nmin = 5, nmax = 60, explanation = "Timeout for API calls to Supabase edge function in seconds", oob_error = "Timeout should be between 5 and 60 seconds" }
+
 [settings]
 allow_nsfw = { optional = false, type = "bool", default = false, example = false, options = [true, false, ], explanation = "Whether to allow NSFW content, True or False" }
 theme = { optional = false, default = "dark", example = "light", options = ["dark", "light", "transparent", ], explanation = "Sets the theme for dream text display, either LIGHT or DARK. For mystical dream videos you can also use a transparent background." }

@@ -124,9 +124,17 @@ def _draw_lines_centered(draw, lines, font, fill, shadow,
         w_px = font.getlength(line)
         x    = (W - w_px) // 2
         if shadow:
-            for dx, dy, alpha in ((2,2,120), (1,1,90)):
-                draw.text((x+dx, y+dy), line, font=font,
-                          fill=(0, 0, 0, alpha))
+            # Create a light black outline by drawing text in 8 directions around the main position
+            outline_width = 1  # Width of the outline
+            outline_color = (0, 0, 0, 100)  # Light black with alpha for subtle effect
+            
+            # Draw outline in 8 directions (top, bottom, left, right, and 4 diagonals)
+            for dx in [-outline_width, 0, outline_width]:
+                for dy in [-outline_width, 0, outline_width]:
+                    if dx != 0 or dy != 0:  # Skip the center position (main text)
+                        draw.text((x + dx, y + dy), line, font=font, fill=outline_color)
+        
+        # Draw the main text on top
         draw.text((x, y), line, font=font, fill=fill)
         y += lh
 # ──────────────────────────────────────────────────────────────────────────────
