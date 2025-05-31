@@ -223,6 +223,29 @@ def make_final_video(
             audio_clips = [ffmpeg.input(f"assets/temp/{reddit_id}/mp3/title.mp3")]
             for i in range(actual_content_clips):
                 audio_clips.append(ffmpeg.input(f"assets/temp/{reddit_id}/mp3/postaudio-{i}.mp3"))
+                
+        # 🌙 ADD DREAM ANALYSIS AUDIO CLIPS
+        if reddit_obj.get("dream_analysis"):
+            print_substep("Adding dream analysis audio to final video...", "blue")
+            analysis_audio_files = []
+            
+            # Check for chunked analysis audio files
+            chunk_idx = 0
+            while True:
+                chunk_name = f"analysis_chunk_{chunk_idx}"
+                analysis_file = f"assets/temp/{reddit_id}/mp3/{chunk_name}.mp3"
+                
+                if os.path.exists(analysis_file):
+                    audio_clips.append(ffmpeg.input(analysis_file))
+                    analysis_audio_files.append(chunk_name)
+                    chunk_idx += 1
+                else:
+                    break  # No more chunks found
+                    
+            if analysis_audio_files:
+                print_substep(f"✅ Added {len(analysis_audio_files)} analysis audio chunks: {', '.join(analysis_audio_files)}", "green")
+            else:
+                print_substep("⚠️ No analysis audio files found", "yellow")
 
     else:
         audio_clips = [
@@ -315,6 +338,46 @@ def make_final_video(
                     y="(main_h-overlay_h)/2",
                 )
                 current_time += audio_clips_durations[i + 1]
+                
+            # 🌙 ADD DREAM ANALYSIS IMAGES TO VIDEO TIMELINE
+            if reddit_obj.get("dream_analysis"):
+                print_substep("Adding dream analysis images to video timeline...", "blue")
+                analysis_image_count = 0
+                
+                # Add analysis images with their corresponding audio using chunked structure
+                chunk_idx = 0
+                while True:
+                    chunk_name = f"analysis_chunk_{chunk_idx}"
+                    image_file = f"assets/temp/{reddit_id}/png/{chunk_name}.png"
+                    audio_file = f"assets/temp/{reddit_id}/mp3/{chunk_name}.mp3"
+                    
+                    if os.path.exists(image_file) and os.path.exists(audio_file):
+                        # Get audio duration for this analysis chunk
+                        analysis_duration = float(ffmpeg.probe(audio_file)["format"]["duration"])
+                        
+                        # Add image clip
+                        analysis_image_clip = ffmpeg.input(image_file)["v"].filter(
+                            "scale", W*.75, H*.5
+                        )
+                        
+                        # Overlay the analysis image during its audio duration
+                        background_clip = background_clip.overlay(
+                            analysis_image_clip,
+                            enable=f"between(t,{current_time},{current_time + analysis_duration})",
+                            x="(main_w-overlay_w)/2",
+                            y="(main_h-overlay_h)/2",
+                        )
+                        
+                        current_time += analysis_duration
+                        analysis_image_count += 1
+                        chunk_idx += 1
+                    else:
+                        break  # No more chunks found
+                        
+                if analysis_image_count > 0:
+                    print_substep(f"✅ Added {analysis_image_count} analysis images to video timeline", "green")
+                else:
+                    print_substep("⚠️ No analysis images found for video timeline", "yellow")
     else:
         for i in range(0, number_of_clips + 1):
             image_clips.append(

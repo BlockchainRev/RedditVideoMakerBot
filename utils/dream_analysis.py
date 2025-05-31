@@ -348,73 +348,36 @@ class DreamAnalyzer:
             "sections": [],
             "full_text": "",
             "metadata": {
-                "rating": analysis.get("rating", 0),
-                "themes": analysis.get("themes", []),
-                "symbols": analysis.get("symbols", []),
-                "emotions": analysis.get("emotions", [])
+                "rating": analysis.get("rating", 0)
             }
         }
         
-        # Create sections based on the analysis content
-        if self.include_symbols and analysis.get("symbols"):
-            symbols = analysis["symbols"]
-            if symbols:
-                symbols_text = f"Key symbols in your dream include: {', '.join(symbols)}"
-                formatted["sections"].append({
-                    "type": "symbols",
-                    "title": "🔮 Symbolic Meanings",
-                    "content": symbols_text
-                })
-        
-        if self.include_emotions and analysis.get("emotions"):
-            emotions = analysis["emotions"]
-            if emotions:
-                emotions_text = f"Emotional themes present: {', '.join(emotions)}"
-                formatted["sections"].append({
-                    "type": "emotions",
-                    "title": "💭 Emotional Analysis",
-                    "content": emotions_text
-                })
-        
+        # Only include the interpretation/meaning content
         if self.include_meanings and analysis.get("interpretation"):
             interpretation = analysis["interpretation"]
             if interpretation and interpretation.strip():
                 formatted["sections"].append({
                     "type": "interpretation",
-                    "title": "✨ Dream Interpretation",
+                    "title": "🌙 Dream Analysis",
                     "content": interpretation.strip()
                 })
         
-        # If no specific sections were created, use the interpretation as general analysis
-        if not formatted["sections"] and analysis.get("interpretation"):
-            formatted["sections"].append({
-                "type": "general",
-                "title": "🌙 Dream Analysis",
-                "content": analysis["interpretation"]
-            })
+        # If no interpretation, create an empty result
+        if not formatted["sections"]:
+            print_substep("No interpretation found in analysis", "yellow")
+            return None
         
-        # Create combined full text for TTS
+        # Create combined full text for TTS (just the interpretation without extra titles)
         if formatted["sections"]:
-            text_parts = []
-            for section in formatted["sections"]:
-                text_parts.append(f"{section['title']}: {section['content']}")
-            formatted["full_text"] = " ".join(text_parts)
+            # Just use the interpretation content directly for TTS
+            formatted["full_text"] = formatted["sections"][0]["content"]
         
         # Truncate if too long
         if len(formatted["full_text"]) > self.max_length:
             formatted["full_text"] = formatted["full_text"][:self.max_length - 3] + "..."
-            # Also truncate the last section accordingly
+            # Also update the section content
             if formatted["sections"]:
-                remaining_length = self.max_length - sum(
-                    len(f"{s['title']}: {s['content']} ") 
-                    for s in formatted["sections"][:-1]
-                )
-                if remaining_length > 0:
-                    last_section = formatted["sections"][-1]
-                    title_length = len(f"{last_section['title']}: ")
-                    max_content_length = remaining_length - title_length - 3
-                    if max_content_length > 0:
-                        last_section["content"] = last_section["content"][:max_content_length] + "..."
+                formatted["sections"][0]["content"] = formatted["full_text"]
         
         return formatted
     

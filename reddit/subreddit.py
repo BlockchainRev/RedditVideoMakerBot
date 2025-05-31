@@ -20,15 +20,28 @@ from utils.subreddit import get_subreddit_undone
 from utils.videos import check_done
 from utils.voice import sanitize_text
 
+# Dream analysis import
+try:
+    from utils.dream_analysis import DreamAnalyzer, analyze_dream_content
+    DREAM_ANALYSIS_AVAILABLE = True
+except ImportError:
+    DREAM_ANALYSIS_AVAILABLE = False
+    print_substep("Dream analysis module not available", "yellow")
+
 # Dream-related subreddits for better content targeting
 DREAM_SUBREDDITS = [
     "Dreams", "DreamAnalysis", "LucidDreaming", "DreamInterpretation", 
     "Nightmares", "DreamJournal", "WeirdDreams", "DreamMeaning"
 ]
 
-def get_subreddit_threads(POST_ID: str):
+def get_subreddit_threads(POST_ID: str, use_dream_analysis: bool = False, keep_under_30_seconds: bool = False):
     """
     Returns a list of threads from dream-related subreddits.
+    
+    Args:
+        POST_ID: Specific post ID if provided
+        use_dream_analysis: Whether to include professional dream analysis
+        keep_under_30_seconds: Whether to optimize content for 30-second videos (not implemented yet)
     """
 
     print_substep("Logging into Reddit.")
@@ -180,4 +193,59 @@ def get_subreddit_threads(POST_ID: str):
                         )
 
     print_substep("Received dream content successfully.", style="bold green")
+    
+    # 🌙 DREAM ANALYSIS INTEGRATION
+    if use_dream_analysis and DREAM_ANALYSIS_AVAILABLE:
+        print_step("🧠 Analyzing dream content...")
+        
+        # Extract the main dream content for analysis
+        dream_content = ""
+        if content["thread_post"]:
+            # Use the main post content as the primary dream
+            if isinstance(content["thread_post"], list):
+                dream_content = " ".join(content["thread_post"])
+            else:
+                dream_content = content["thread_post"]
+        elif content["comments"]:
+            # Fallback to first substantial comment if no post content
+            dream_content = content["comments"][0]["comment_body"]
+        
+        if dream_content.strip():
+            try:
+                dream_analysis = analyze_dream_content(dream_content)
+                
+                if dream_analysis:
+                    print_substep("✅ Dream analysis completed successfully", "green")
+                    
+                    # Add analysis to content structure for video creation
+                    content["dream_analysis"] = dream_analysis
+                    
+                    # Optional: Add analysis to thread title for context
+                    if settings.config.get("dream_analysis", {}).get("include_in_title", False):
+                        content["thread_title"] += " - With Professional Analysis"
+                        
+                    print_substep(f"📊 Analysis includes: {len(dream_analysis.get('sections', []))} sections, "
+                                f"full text: {len(dream_analysis.get('full_text', ''))} chars", "blue")
+                else:
+                    print_substep("⚠️ Dream analysis returned empty results", "yellow")
+                    content["dream_analysis"] = None
+                    
+            except Exception as e:
+                print_substep(f"⚠️ Dream analysis failed: {str(e)}", "yellow")
+                content["dream_analysis"] = None
+        else:
+            print_substep("⚠️ No dream content found for analysis", "yellow")
+            content["dream_analysis"] = None
+    else:
+        content["dream_analysis"] = None
+    
+    # TODO: Implement 30-second optimization logic here when keep_under_30_seconds is True
+    if keep_under_30_seconds:
+        print_substep("📝 30-second optimization: Feature coming soon!", "yellow")
+        # Future implementation will:
+        # 1. Estimate text-to-speech duration
+        # 2. Summarize content if too long
+        # 3. Prioritize most important dream elements
+        # 4. Adjust analysis content accordingly
+    
     return content

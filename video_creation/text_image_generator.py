@@ -61,6 +61,72 @@ def render_chunks_to_images(chunks       : List[str],
     return paths
 
 
+# ── Public helper #3 ──────────────────────────────────────────────────────────
+def render_dream_analysis_images(analysis_data: dict,
+                                out_dir: Path,
+                                font_path: str = "fonts/Roboto-Regular.ttf",
+                                ) -> List[Path]:
+    """
+    Generate styled images for dream analysis chunks.
+    
+    Args:
+        analysis_data: Dictionary containing dream analysis data with full_text
+        out_dir: Output directory for images
+        font_path: Path to font file
+        
+    Returns:
+        List of generated image paths
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    paths = []
+    
+    # Get the analysis content for chunking
+    analysis_content = analysis_data.get("full_text", "")
+    
+    if not analysis_content.strip():
+        return paths  # No content to generate images for
+    
+    # Chunk the analysis content like other Reddit content
+    analysis_chunks = chunk_text_for_tts(analysis_content)
+    
+    # Define color for analysis (use dream analysis gold)
+    analysis_color = (255, 215, 0, 255)  # Gold
+    
+    # Generate images for each chunk
+    for idx, chunk in enumerate(analysis_chunks):
+        if not chunk.strip():
+            continue  # Skip empty chunks
+        
+        # Add dream analysis prefix to first chunk only
+        if idx == 0:
+            text = f"🌙 Dream Analysis\n\n{chunk}"
+        else:
+            text = chunk
+        
+        img = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        
+        # Use standard font size for analysis chunks
+        font = ImageFont.truetype(font_path, 100)
+        lines = _wrap_text_by_pixels(text, font, 1080 - 96)  # 48px margin on each side
+        
+        # If text is still too wide, reduce font size
+        while _line_too_wide(lines, font, 1080 - 96) and font.size > 50:
+            font = ImageFont.truetype(font_path, font.size - 5)
+            lines = _wrap_text_by_pixels(text, font, 1080 - 96)
+        
+        # Draw with analysis styling
+        _draw_lines_centered(draw, lines, font, analysis_color, shadow=True, 
+                           canvas_size=(1080, 1920), margin_px=48)
+        
+        # Save with chunk-based filename
+        path = out_dir / f"analysis_chunk_{idx}.png"
+        img.save(path, "PNG")
+        paths.append(path)
+    
+    return paths
+
+
 # ── Internal utils ────────────────────────────────────────────────────────────
 def _line_too_wide(lines: List[str], font, max_px: int) -> bool:
     return any(font.getlength(l) > max_px for l in lines)

@@ -91,6 +91,37 @@ class TTSEngine:
             elif settings.config["settings"]["storymodemethod"] == 1:
                 for idx, text in track(enumerate(self.reddit_object["thread_post"])):
                     self.call_tts(f"postaudio-{idx}", process_text(text))
+                    
+            # 🌙 ADD DREAM ANALYSIS AUDIO AFTER POST CONTENT
+            if self.reddit_object.get("dream_analysis"):
+                print_substep("Adding dream analysis to audio...", "blue")
+                analysis = self.reddit_object["dream_analysis"]
+                
+                # Get the analysis content for chunking
+                analysis_content = analysis.get("full_text", "")
+                
+                if analysis_content.strip():
+                    # Import the chunking function from text_image_generator
+                    import sys
+                    sys.path.append('video_creation')
+                    from video_creation.text_image_generator import chunk_text_for_tts
+                    
+                    # Chunk the analysis content like other Reddit content
+                    analysis_chunks = chunk_text_for_tts(analysis_content)
+                    
+                    print_substep(f"Analysis chunked into {len(analysis_chunks)} parts", "blue")
+                    
+                    # Generate TTS for each analysis chunk
+                    for idx, chunk in enumerate(analysis_chunks):
+                        chunk_name = f"analysis_chunk_{idx}"
+                        if len(chunk) > self.tts_module.max_chars:
+                            self.split_post(chunk, chunk_name)
+                        else:
+                            self.call_tts(chunk_name, process_text(chunk))
+                    
+                    print_substep(f"✅ Added {len(analysis_chunks)} dream analysis chunks to audio", "green")
+                else:
+                    print_substep("⚠️ No analysis content found for TTS", "yellow")
 
         else:
             for idx, comment in track(enumerate(self.reddit_object["comments"]), "Saving..."):

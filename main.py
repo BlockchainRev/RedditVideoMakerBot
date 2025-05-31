@@ -15,6 +15,7 @@ from utils.console import print_markdown, print_step, print_substep
 from utils.ffmpeg_install import ffmpeg_install
 from utils.id import id
 from utils.version import checkversion
+from utils.dream_analysis import is_dream_analysis_enabled
 from video_creation.background import (
     chop_background,
     download_background_audio,
@@ -22,7 +23,7 @@ from video_creation.background import (
     get_background_config,
 )
 from video_creation.final_video import make_final_video
-from video_creation.text_image_generator import render_chunks_to_images, chunk_text_for_tts
+from video_creation.text_image_generator import render_chunks_to_images, chunk_text_for_tts, render_dream_analysis_images
 from video_creation.voices import save_text_to_mp3
 
 __VERSION__ = "3.3.0"
@@ -46,7 +47,37 @@ checkversion(__VERSION__)
 
 def main(POST_ID=None) -> None:
     global redditid, reddit_object
-    reddit_object = get_subreddit_threads(POST_ID)
+    
+    # User prompts for enhanced features
+    use_dream_analysis = False
+    keep_under_30_seconds = False
+    
+    # Check if dream analysis is available and prompt user
+    if is_dream_analysis_enabled():
+        print_step("🌙 Dream Analysis Options")
+        analysis_choice = input("Do you want to include professional dream analysis in your video? (y/n): ").strip().lower()
+        use_dream_analysis = analysis_choice.startswith('y')
+        
+        if use_dream_analysis:
+            print_substep("✅ Dream analysis will be included", "green")
+            
+            # Additional prompt for video length optimization
+            print_step("⏱️ Video Length Options")
+            length_choice = input("Do you want to keep the final video under 30 seconds? (y/n): ").strip().lower()
+            keep_under_30_seconds = length_choice.startswith('y')
+            
+            if keep_under_30_seconds:
+                print_substep("✅ Video will be optimized for ~30 seconds", "green")
+                print_substep("📝 Note: Content will be summarized to fit time limit", "yellow")
+            else:
+                print_substep("📹 Video will include full content", "blue")
+        else:
+            print_substep("📹 Creating video without dream analysis", "blue")
+    else:
+        print_substep("💭 Dream analysis not configured - skipping", "yellow")
+    
+    # Get Reddit content with analysis preferences
+    reddit_object = get_subreddit_threads(POST_ID, use_dream_analysis, keep_under_30_seconds)
     redditid = id(reddit_object)
     length, number_of_comments = save_text_to_mp3(reddit_object)
     length = math.ceil(length)
@@ -127,6 +158,24 @@ def main(POST_ID=None) -> None:
                             target_path.unlink() # Make sure we're not trying to rename to an existing file from a previous iteration
                         source_path.rename(target_path)
                     post_images_generated_count += 1
+    
+    # 🌙 GENERATE DREAM ANALYSIS IMAGES
+    if reddit_object.get("dream_analysis"):
+        print_step("🎨 Generating dream analysis images...")
+        try:
+            analysis_image_paths = render_dream_analysis_images(
+                reddit_object["dream_analysis"], 
+                image_dir,
+                font_path="fonts/Roboto-Bold.ttf"
+            )
+            if analysis_image_paths:
+                print_substep(f"✅ Generated {len(analysis_image_paths)} analysis images", "green")
+                for path in analysis_image_paths:
+                    print_substep(f"   📄 {path.name}", "blue")
+            else:
+                print_substep("⚠️ No analysis images generated", "yellow")
+        except Exception as e:
+            print_substep(f"⚠️ Failed to generate analysis images: {str(e)}", "yellow")
     
     bg_config = {
         "video": get_background_config("video"),
