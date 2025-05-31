@@ -263,7 +263,7 @@ def make_final_video(
     image_clips.insert(
         0,
         ffmpeg.input(f"assets/temp/{reddit_id}/png/title.png")["v"].filter(
-            "scale", screenshot_width, -1
+            "scale", W, H
         ),
     )
 
@@ -282,7 +282,7 @@ def make_final_video(
             image_clips.insert(
                 1,
                 ffmpeg.input(f"assets/temp/{reddit_id}/png/story_content.png").filter(
-                    "scale", screenshot_width, -1
+                    "scale", W*.75, H*.5
                 ),
             )
             background_clip = background_clip.overlay(
@@ -305,7 +305,7 @@ def make_final_video(
             for i in track(range(actual_content_clips), "Collecting the image files..."):
                 image_clips.append(
                     ffmpeg.input(f"assets/temp/{reddit_id}/png/content_{i}.png")["v"].filter(
-                        "scale", screenshot_width, -1
+                        "scale", W*.75, H*.5
                     )
                 )
                 background_clip = background_clip.overlay(
@@ -319,7 +319,7 @@ def make_final_video(
         for i in range(0, number_of_clips + 1):
             image_clips.append(
                 ffmpeg.input(f"assets/temp/{reddit_id}/png/comment_{i}.png")["v"].filter(
-                    "scale", screenshot_width, -1
+                    "scale", W*.75, H*.5
                 )
             )
             image_overlay = image_clips[i].filter("colorchannelmixer", aa=opacity)
