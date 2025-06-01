@@ -47,7 +47,7 @@ background_thumbnail_font_size = 96
 background_thumbnail_font_color = "255,255,255"
 
 [settings.tts]
-voice_choice = "tiktok"  # Good quality and free
+voice_choice = "chatterbox"  # Using local open-source TTS instead of TikTok
 random_voice = false  # Keep consistent voice for dream narration
 elevenlabs_voice_name = "Bella"
 elevenlabs_api_key = ""
@@ -55,10 +55,12 @@ aws_polly_voice = "Matthew"
 streamlabs_polly_voice = "Matthew"
 tiktok_voice = "en_us_001"
 tiktok_sessionid = ""
+chatterbox_voice = "default"
+chatterbox_exaggeration = 0.6  # Slightly more expressive for dream content
+chatterbox_cfg_weight = 0.4   # Slower, more deliberate pacing for mystical feel
 python_voice = "1"
 py_voice_num = "2"
-silence_duration = 0.5  # Slightly longer pauses for dream content
-no_emojis = false  # Keep emojis for visual appeal
+silence_duration = 0.5
 
 [dream_analysis]
 # Dream analysis configuration using lucidrem.com

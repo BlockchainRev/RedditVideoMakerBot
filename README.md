@@ -35,6 +35,38 @@ The only original thing being done is the editing and gathering of all materials
 - Python 3.10
 - Playwright (this should install automatically in installation)
 
+## TTS Options 🎙️
+
+This bot supports multiple Text-to-Speech engines:
+
+### Chatterbox TTS (Recommended) 🆕
+- **Local, open-source TTS** - No API keys required!
+- **High-quality voice synthesis** - Outperforms ElevenLabs in side-by-side tests
+- **Voice cloning support** - Use custom voice files for unique narration
+- **Emotion control** - Adjust exaggeration and pacing for different content styles
+- **GPU acceleration** - Fast generation with CUDA support
+
+**Quick Setup:**
+```bash
+python install_chatterbox.py
+```
+
+**Configuration:**
+```toml
+[settings.tts]
+voice_choice = "chatterbox"
+chatterbox_voice = "default"  # or "female", "male", "neutral", or custom voice name
+chatterbox_exaggeration = 0.5  # 0.0-1.0, higher = more expressive
+chatterbox_cfg_weight = 0.5    # 0.0-1.0, lower = slower/more deliberate
+```
+
+### Other TTS Options
+- **ElevenLabs** - High quality but requires API key and costs money
+- **TikTok TTS** - Free but requires session ID
+- **AWS Polly** - Requires AWS credentials
+- **Google Translate** - Free but basic quality
+- **pyttsx3** - Local system voices
+
 ## Installation 👩‍💻
 
 1. Clone this repository
@@ -49,15 +81,29 @@ On macOS and Linux (debian, arch, fedora and centos, and based on those), you ca
 
 This can also be used to update the installation
 
-4. Run `python main.py`
-5. Visit [the Reddit Apps page.](https://www.reddit.com/prefs/apps), and set up an app that is a "script". Paste any URL in redirect URL. Ex:`https://jasoncameron.dev`
-6. The bot will ask you to fill in your details to connect to the Reddit API, and configure the bot to your liking
-7. Enjoy 😎
-8. If you need to reconfigure the bot, simply open the `config.toml` file and delete the lines that need to be changed. On the next run of the bot, it will help you reconfigure those options.
+4. **For Chatterbox TTS (recommended):** Run `python install_chatterbox.py`
+5. Run `python main.py`
+6. Visit [the Reddit Apps page.](https://www.reddit.com/prefs/apps), and set up an app that is a "script". Paste any URL in redirect URL. Ex:`https://jasoncameron.dev`
+7. The bot will ask you to fill in your details to connect to the Reddit API, and configure the bot to your liking
+8. Enjoy 😎
+9. If you need to reconfigure the bot, simply open the `config.toml` file and delete the lines that need to be changed. On the next run of the bot, it will help you reconfigure those options.
 
 (Note if you got an error installing or running the bot try first rerunning the command with a three after the name e.g. python3 or pip3)
 
 If you want to read more detailed guide about the bot, please refer to the [documentation](https://reddit-video-maker-bot.netlify.app/)
+
+## Custom Voice Cloning with Chatterbox 🎭
+
+Want to use your own voice or a specific character voice? Chatterbox TTS supports voice cloning!
+
+1. **Prepare voice samples**: Record 3-10 seconds of clear, high-quality speech
+2. **Add to voices folder**: Place your audio files (`.wav`, `.mp3`, `.flac`, `.m4a`) in `assets/voices/`
+3. **Configure**: Set `chatterbox_voice` to your filename (without extension)
+4. **Optimize settings**: 
+   - For dramatic content: `exaggeration = 0.7`, `cfg_weight = 0.3`
+   - For calm narration: `exaggeration = 0.5`, `cfg_weight = 0.5`
+
+See `assets/voices/README.md` for detailed instructions.
 
 ## Video
 

@@ -258,7 +258,43 @@
                         <option value="googletranslate">Google Translate</option>
                         <option value="awspolly">AWS Polly</option>
                         <option value="pyttsx">Python TTS (pyttsx)</option>
+                        <option value="chatterbox">Chatterbox (Local OSS)</option>
                     </select>
+                </div>
+            </div>
+            <div class="row mb-2">
+                <label for="chatterbox_voice" class="col-4">Chatterbox Voice</label>
+                <div class="col-8">
+                    <div class="input-group">
+                        <div class="input-group-text">
+                            <i class="bi bi-mic-fill"></i>
+                        </div>
+                        <input value="{{ data.chatterbox_voice }}" name="chatterbox_voice" type="text" class="form-control"
+                            data-toggle="tooltip"
+                            data-original-title="Voice for Chatterbox TTS. Use 'default', 'female', 'male', 'neutral', or a custom voice file name from assets/voices/">
+                    </div>
+                </div>
+            </div>
+            <div class="row mb-2">
+                <label for="chatterbox_exaggeration" class="col-4">Chatterbox Exaggeration</label>
+                <div class="col-8">
+                    <div class="input-group">
+                        <input name="chatterbox_exaggeration" type="range" class="form-range" min="0" max="1" step="0.1"
+                            value="{{ data.chatterbox_exaggeration }}" data-toggle="tooltip"
+                            data-original-title="Controls emotion exaggeration (0.0-1.0). Higher = more expressive">
+                    </div>
+                    <span class="form-text text-muted">Emotion exaggeration level (0.0 = neutral, 1.0 = very expressive)</span>
+                </div>
+            </div>
+            <div class="row mb-2">
+                <label for="chatterbox_cfg_weight" class="col-4">Chatterbox CFG Weight</label>
+                <div class="col-8">
+                    <div class="input-group">
+                        <input name="chatterbox_cfg_weight" type="range" class="form-range" min="0" max="1" step="0.1"
+                            value="{{ data.chatterbox_cfg_weight }}" data-toggle="tooltip"
+                            data-original-title="Controls speech pacing (0.0-1.0). Lower = slower, more deliberate">
+                    </div>
+                    <span class="form-text text-muted">Speech pacing control (0.0 = slow/deliberate, 1.0 = fast)</span>
                 </div>
             </div>
             <div class="row mb-2">

@@ -74,7 +74,7 @@ def get_subreddit_threads(POST_ID: str, use_dream_analysis: bool = False, keep_u
         print("Something went wrong...")
 
     # Ask user for subreddit input with dream-focused defaults
-    print_step("Getting dream stories from subreddit...")
+    print_step("Getting the most popular dream stories from subreddit (past week)...")
     similarity_score = 0
     if not settings.config["reddit"]["thread"]["subreddit"]:
         try:
@@ -106,7 +106,7 @@ def get_subreddit_threads(POST_ID: str, use_dream_analysis: bool = False, keep_u
     ):
         submission = reddit.submission(id=settings.config["reddit"]["thread"]["post_id"])
     elif settings.config["ai"]["ai_similarity_enabled"] and AI_AVAILABLE:  # ai sorting based on comparison
-        threads = subreddit.hot(limit=100)
+        threads = subreddit.top(time_filter="week", limit=100)  # Get top posts from the past week
         # Use dream-specific keywords if none provided
         keywords = settings.config["ai"]["ai_similarity_keywords"].split(",") if settings.config["ai"]["ai_similarity_keywords"] else ["dream", "nightmare", "sleep", "vision", "lucid", "subconscious"]
         keywords = [keyword.strip() for keyword in keywords]
@@ -118,7 +118,7 @@ def get_subreddit_threads(POST_ID: str, use_dream_analysis: bool = False, keep_u
             threads, subreddit, similarity_scores=similarity_scores
         )
     else:
-        threads = subreddit.hot(limit=50)
+        threads = subreddit.top(time_filter="week", limit=50)  # Get top posts from the past week
         submission = get_subreddit_undone(threads, subreddit)
 
     if submission is None:
